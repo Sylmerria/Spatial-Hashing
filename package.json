@@ -1,0 +1,18 @@
+{
+  "name": "com.lennethproduction.spatialhashing",
+  "version": "1.0.0",
+  "displayName": "Spatial Hashing",
+  "description": "Spatial hashing for Unity using ECS",
+  "unity": "2019.1",
+  "dependencies": {
+    "com.unity.burst": "1.0.4",
+    "com.unity.collections": "0.0.9-preview.20",
+    "com.unity.entities": "0.0.12-preview.33",
+    "com.unity.jobs": "0.0.7-preview.13",
+    "com.unity.mathematics": "1.0.1"
+ },
+ "keywords": [
+    "ECS",
+    "Spatial hashing"
+  ]
+}
