@@ -523,6 +523,23 @@ namespace HMH.ECS.SpatialHashing
             return true;
         }
 
+        public int QueryCount(int3 chunkIndex)
+        {
+            var hash = Hash(chunkIndex);
+
+            int counter = 0;
+
+            if (_buckets.TryGetFirstValue(hash, out _, out var it))
+            {
+                ++counter;
+
+                while (_buckets.TryGetNextValue(out _, ref it))
+                    ++counter;
+            }
+
+            return counter;
+        }
+
         #endregion
 
         #region Hashing
