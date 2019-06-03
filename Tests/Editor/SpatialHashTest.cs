@@ -146,7 +146,7 @@ namespace HMH.ECS.SpatialHashing.Test
             var results = new NativeList<Item>(5, Allocator.TempJob);
             var bounds  = new Bounds(item.GetCenter(), item.GetSize());
 
-            sh.CalculStartEndIteration( bounds, out var start, out var end);
+            sh.CalculStartEndIteration(bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
@@ -162,7 +162,7 @@ namespace HMH.ECS.SpatialHashing.Test
                     {
                         hashPosition.z = z;
 
-                        var querryBound = new Bounds(sh.GetPositionVoxel(hashPosition ,true), cellSize * 0.95F);
+                        var querryBound = new Bounds(sh.GetPositionVoxel(hashPosition, true), cellSize * 0.95F);
 
                         results.Clear();
                         sh.Query(querryBound, results);
@@ -179,7 +179,7 @@ namespace HMH.ECS.SpatialHashing.Test
         }
     }
 
-    public struct Item : ISpatialHashingItem<Item>,IComponentData
+    public struct Item : ISpatialHashingItem<Item>, IComponentData
     {
         public float3 Center;
         public float3 Size;

@@ -56,7 +56,10 @@ namespace HMH.ECS.SpatialHashing
 
             _buckets.Dispose();
             _itemIDToBounds.Dispose();
+            _itemIDToItem.Dispose();
             _hashMapUnic.Dispose();
+            _helpMoveHashMapOld.Dispose();
+            _helpMoveHashMapNew.Dispose();
         }
 
         #region I/O
@@ -314,6 +317,25 @@ namespace HMH.ECS.SpatialHashing
         #endregion
 
         #region Query
+
+        public void Query(int3 chunkIndex, NativeList<T> resultList)
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+#endif
+
+            _hashMapUnic.Clear();
+
+            var hash = Hash(chunkIndex);
+
+            if (_buckets.TryGetFirstValue(hash, out var item, out var it) == false)
+                return;
+
+            do
+                if (_hashMapUnic.TryAdd(item, 0))
+                    resultList.Add(_itemIDToItem[item]);
+            while (_buckets.TryGetNextValue(out item, ref it));
+        }
 
         /// <summary>
         /// Query system to find object in <paramref name="bounds"/>.

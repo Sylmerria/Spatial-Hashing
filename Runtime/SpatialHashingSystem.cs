@@ -66,7 +66,8 @@ namespace HMH.ECS.SpatialHashing
         #endregion
 
         /// <inheritdoc />
-        protected override JobHandle OnUpdate(JobHandle inputDeps){
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        {
             inputDeps = new AddSpatialHashingJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_addGroup, inputDeps);
             inputDeps = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.ToConcurrent() }.Schedule(_addGroup, inputDeps);
 
@@ -180,14 +181,14 @@ namespace HMH.ECS.SpatialHashing
             #region Implementation of IJobProcessComponentData<T>
 
             /// <inheritdoc />
-            public void Execute([ReadOnly] ref T item)
+            public void Execute([ReadOnly, ChangedFilter] ref T item)
             {
                 _spatialHash.Remove(item.SpatianHashingIndex);
             }
 
             #endregion
 
-            public void SetSpatialHash([ChangedFilter] ref SpatialHash<T> spatialHash)
+            public void SetSpatialHash(ref SpatialHash<T> spatialHash)
             {
                 _spatialHash = spatialHash;
             }
