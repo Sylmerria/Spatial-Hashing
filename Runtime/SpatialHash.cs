@@ -314,6 +314,20 @@ namespace HMH.ECS.SpatialHashing
             end   = ((bounds.Max - data -> _worldBoundsMin) / data -> _cellSize).CeilToInt();
         }
 
+        public T GetObject(int index)
+        {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+#endif
+
+            if (_itemIDToItem.TryGetValue(index, out var value))
+                return value;
+
+            Assert.IsTrue(false);
+
+            return default(T);
+        }
+
         #endregion
 
         #region Query
@@ -414,9 +428,9 @@ namespace HMH.ECS.SpatialHashing
 
                         var pos = GetPositionVoxel(hashPosition, true);
 
-                       if (obbBounds.RayCastOBBFast(pos-new float3(_data->_cellSize.x*0.5F,0F,0F), _right, inverseRotation,_data->_cellSize.x) ||
-                            obbBounds.RayCastOBBFast(pos-new float3(0F,_data->_cellSize.y*0.5F,0F), _up, inverseRotation,_data->_cellSize.y) ||
-                            obbBounds.RayCastOBBFast(pos-new float3(0F,0F,_data->_cellSize.z*0.5F), _forward, inverseRotation,_data->_cellSize.z))
+                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> _cellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> _cellSize.x) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> _cellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> _cellSize.y) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> _cellSize.z * 0.5F), _forward, inverseRotation, _data -> _cellSize.z))
                         {
                             var hash = Hash(hashPosition);
 
@@ -466,9 +480,9 @@ namespace HMH.ECS.SpatialHashing
 
                         var pos = GetPositionVoxel(hashPosition, true);
 
-                        if (obbBounds.RayCastOBBFast(pos-new float3(_data->_cellSize.x*0.5F,0F,0F), _right, inverseRotation,_data->_cellSize.x) ||
-                            obbBounds.RayCastOBBFast(pos-new float3(0F,_data->_cellSize.y*0.5F,0F), _up, inverseRotation,_data->_cellSize.y) ||
-                            obbBounds.RayCastOBBFast(pos-new float3(0F,0F,_data->_cellSize.z*0.5F), _forward, inverseRotation,_data->_cellSize.z))
+                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> _cellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> _cellSize.x) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> _cellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> _cellSize.y) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> _cellSize.z * 0.5F), _forward, inverseRotation, _data -> _cellSize.z))
                             voxelIndexes.Add(hashPosition);
                     }
                 }
