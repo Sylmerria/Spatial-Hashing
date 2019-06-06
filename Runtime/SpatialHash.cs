@@ -38,7 +38,6 @@ namespace HMH.ECS.SpatialHashing
             _buckets            = new NativeMultiHashMap<uint, int>(startSize, label);
             _itemIDToBounds     = new NativeHashMap<int, Bounds>(startSize >> 1, label);
             _itemIDToItem       = new NativeHashMap<int, T>(startSize >> 1, label);
-            _hashMapUnic        = new NativeHashMap<int, byte>(startSize >> 1, label);
             _helpMoveHashMapOld = new NativeHashMap<int3, byte>(128, _allocatorLabel);
             _helpMoveHashMapNew = new NativeHashMap<int3, byte>(128, _allocatorLabel);
 
@@ -57,7 +56,6 @@ namespace HMH.ECS.SpatialHashing
             _buckets.Dispose();
             _itemIDToBounds.Dispose();
             _itemIDToItem.Dispose();
-            _hashMapUnic.Dispose();
             _helpMoveHashMapOld.Dispose();
             _helpMoveHashMapNew.Dispose();
         }
@@ -275,7 +273,6 @@ namespace HMH.ECS.SpatialHashing
             _itemIDToBounds.Clear();
             _buckets.Clear();
             _itemIDToBounds.Clear();
-            _hashMapUnic.Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -335,18 +332,17 @@ namespace HMH.ECS.SpatialHashing
         public void Query(int3 chunkIndex, NativeList<T> resultList)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
 
-            _hashMapUnic.Clear();
-
-            var hash = Hash(chunkIndex);
+            var hashMapUnic = new NativeHashMap<int, byte>(64, Allocator.Temp);
+            var hash        = Hash(chunkIndex);
 
             if (_buckets.TryGetFirstValue(hash, out var item, out var it) == false)
                 return;
 
             do
-                if (_hashMapUnic.TryAdd(item, 0))
+                if (hashMapUnic.TryAdd(item, 0))
                     resultList.Add(_itemIDToItem[item]);
             while (_buckets.TryGetNextValue(out item, ref it));
         }
@@ -359,13 +355,13 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(resultList.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
             bounds.Clamp(_data -> _worldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
-            _hashMapUnic.Clear();
+            var hashMapUnic  = new NativeHashMap<int, byte>(64, Allocator.Temp);
             var hashPosition = new int3(0F);
 
             for (int x = start.x; x < end.x; ++x)
@@ -384,13 +380,13 @@ namespace HMH.ECS.SpatialHashing
 
                         if (_buckets.TryGetFirstValue(hash, out var item, out var it))
                             do
-                                _hashMapUnic.TryAdd(item, 0);
+                                hashMapUnic.TryAdd(item, 0);
                             while (_buckets.TryGetNextValue(out item, ref it));
                     }
                 }
             }
 
-            ExtractValueFromHashMap(bounds, resultList);
+            ExtractValueFromHashMap(hashMapUnic, bounds, resultList);
         }
 
         public void Query(Bounds obbBounds, quaternion rotation, NativeList<T> resultList)
@@ -398,7 +394,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(resultList.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
 
             var bounds = TransformBounds(obbBounds, rotation);
@@ -406,7 +402,8 @@ namespace HMH.ECS.SpatialHashing
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
-            _hashMapUnic.Clear();
+            var hashMapUnic = new NativeHashMap<int, byte>(64, Allocator.Temp);
+
             var hashPosition = new int3(0F);
 
             //add offset for simplify logic and allowed pruning
@@ -436,14 +433,14 @@ namespace HMH.ECS.SpatialHashing
 
                             if (_buckets.TryGetFirstValue(hash, out var item, out var it))
                                 do
-                                    _hashMapUnic.TryAdd(item, 0);
+                                    hashMapUnic.TryAdd(item, 0);
                                 while (_buckets.TryGetNextValue(out item, ref it));
                         }
                     }
                 }
             }
 
-            ExtractValueFromHashMap(bounds, resultList);
+            ExtractValueFromHashMap(hashMapUnic, bounds, resultList);
         }
 
         public void Query(Bounds obbBounds, quaternion rotation, NativeList<int3> voxelIndexes)
@@ -501,9 +498,9 @@ namespace HMH.ECS.SpatialHashing
             return b;
         }
 
-        private void ExtractValueFromHashMap(Bounds bounds, NativeList<T> resultList)
+        private void ExtractValueFromHashMap(NativeHashMap<int, byte> hashMapUnic, Bounds bounds, NativeList<T> resultList)
         {
-            var datas = _hashMapUnic.GetKeyArray(Allocator.Temp);
+            var datas = hashMapUnic.GetKeyArray(Allocator.Temp);
 
             for (int i = 0; i < datas.Length; i++)
             {
@@ -522,7 +519,6 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
 
-            _hashMapUnic.Clear();
             _data -> _hasHit = false;
 
             _data -> _rayOrigin    = ray.origin;
@@ -693,7 +689,6 @@ namespace HMH.ECS.SpatialHashing
         private NativeMultiHashMap<uint, int> _buckets;        //4
         private NativeHashMap<int, Bounds>    _itemIDToBounds; //4
         private NativeHashMap<int, T>         _itemIDToItem;   //4
-        private NativeHashMap<int, byte>      _hashMapUnic;    //4
 
         private NativeHashMap<int3, byte> _helpMoveHashMapOld;
         private NativeHashMap<int3, byte> _helpMoveHashMapNew;
