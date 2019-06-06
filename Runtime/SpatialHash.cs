@@ -335,7 +335,7 @@ namespace HMH.ECS.SpatialHashing
         public void Query(int3 chunkIndex, NativeList<T> resultList)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
 #endif
 
             _hashMapUnic.Clear();
@@ -359,7 +359,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(resultList.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
 #endif
             bounds.Clamp(_data -> _worldBounds);
 
@@ -398,7 +398,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(resultList.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
 #endif
 
             var bounds = TransformBounds(obbBounds, rotation);
