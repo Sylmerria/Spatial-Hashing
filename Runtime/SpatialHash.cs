@@ -74,9 +74,9 @@ namespace HMH.ECS.SpatialHashing
 
             var itemID = ++_data -> Counter;
 
+            item.SpatianHashingIndex = itemID;
             _itemIDToBounds.TryAdd(itemID, bounds);
             _itemIDToItem.TryAdd(itemID, item);
-            item.SpatianHashingIndex = itemID;
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
