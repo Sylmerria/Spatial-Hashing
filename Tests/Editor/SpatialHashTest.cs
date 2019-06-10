@@ -58,7 +58,7 @@ namespace HMH.ECS.SpatialHashing.Test
             Assert.AreEqual(1, sh.ItemCount);
             Assert.AreEqual(1, sh.BucketItemCount);
 
-            sh.Remove(item.SpatianHashingIndex);
+            sh.Remove(item.SpatialHashingIndex);
 
             Assert.AreEqual(0, sh.ItemCount);
             Assert.AreEqual(0, sh.BucketItemCount);
@@ -77,7 +77,7 @@ namespace HMH.ECS.SpatialHashing.Test
             Assert.AreEqual(1, sh.ItemCount);
             Assert.AreEqual(3 * 3 * 3, sh.BucketItemCount);
 
-            sh.Remove(item.SpatianHashingIndex);
+            sh.Remove(item.SpatialHashingIndex);
 
             Assert.AreEqual(0, sh.ItemCount);
             Assert.AreEqual(0, sh.BucketItemCount);
@@ -217,7 +217,7 @@ namespace HMH.ECS.SpatialHashing.Test
         }
 
         /// <inheritdoc />
-        public int SpatianHashingIndex { get; set; }
+        public int SpatialHashingIndex { get; set; }
 
         #endregion
     }

@@ -77,7 +77,7 @@ namespace HMH.ECS.SpatialHashing
 
             var itemID = ++_data -> Counter;
 
-            item.SpatianHashingIndex = itemID;
+            item.SpatialHashingIndex = itemID;
             _itemIDToBounds.TryAdd(itemID, bounds);
             _itemIDToItem.TryAdd(itemID, item);
 
@@ -109,7 +109,7 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckWriteAndThrow(_safety);
 #endif
 
-            var itemID = item.SpatianHashingIndex;
+            var itemID = item.SpatialHashingIndex;
             var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
             bounds.Clamp(_data -> WorldBounds);
@@ -229,7 +229,7 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckWriteAndThrow(_safety);
 #endif
-            var itemID  = item.SpatianHashingIndex;
+            var itemID  = item.SpatialHashingIndex;
             var success = _itemIDToBounds.TryGetValue(itemID, out var oldBounds);
             Assert.IsTrue(success);
 
@@ -770,7 +770,7 @@ namespace HMH.ECS.SpatialHashing
                 bounds.Clamp(_data -> WorldBounds);
 
                 var itemID = Interlocked.Increment(ref _data -> Counter);
-                item.SpatianHashingIndex = itemID;
+                item.SpatialHashingIndex = itemID;
 
                 if (_itemIDToBounds.TryAdd(itemID, bounds) == false || _itemIDToItem.TryAdd(itemID, item) == false)
                     return false;
@@ -812,7 +812,7 @@ namespace HMH.ECS.SpatialHashing
                 AtomicSafetyHandle.CheckWriteAndThrow(_safety);
 #endif
 
-                var itemID = item.SpatianHashingIndex;
+                var itemID = item.SpatialHashingIndex;
                 var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
                 bounds.Clamp(_data -> WorldBounds);
@@ -894,6 +894,6 @@ namespace HMH.ECS.SpatialHashing
         float3 GetCenter();
         float3 GetSize();
 
-        int SpatianHashingIndex { get; set; }
+        int SpatialHashingIndex { get; set; }
     }
 }

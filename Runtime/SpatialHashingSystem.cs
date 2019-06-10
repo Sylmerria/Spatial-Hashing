@@ -117,7 +117,7 @@ namespace HMH.ECS.SpatialHashing
             /// <inheritdoc />
             public void Execute(Entity entity, int index, ref T item)
             {
-                var mirror = new TY { GetItemID = item.SpatianHashingIndex };
+                var mirror = new TY { GetItemID = item.SpatialHashingIndex };
                 CommandBuffer.AddComponent(index, entity, mirror);
             }
 
@@ -183,7 +183,7 @@ namespace HMH.ECS.SpatialHashing
             /// <inheritdoc />
             public void Execute([ReadOnly, ChangedFilter] ref T item)
             {
-                _spatialHash.Remove(item.SpatianHashingIndex);
+                _spatialHash.Remove(item.SpatialHashingIndex);
             }
 
             #endregion

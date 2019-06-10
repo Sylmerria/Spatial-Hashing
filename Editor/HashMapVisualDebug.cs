@@ -60,7 +60,6 @@ namespace HMH.ECS.SpatialHashing.Debug
             #endregion
         }
 
-        
         [BurstCompile]
         private struct AddItemTestJob : IJobParallelFor
         {
@@ -88,7 +87,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             public void Execute()
             {
                 for (int i = 0; i < ItemList.Length; i++)
-                    SpatialHash.Remove(ItemList[i].SpatianHashingIndex);
+                    SpatialHash.Remove(ItemList[i].SpatialHashingIndex);
             }
 
             public NativeList<ItemTest>  ItemList;
@@ -341,7 +340,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             }
 
             /// <inheritdoc />
-            public int SpatianHashingIndex { get; set; }
+            public int SpatialHashingIndex { get; set; }
 
             #endregion
         }
