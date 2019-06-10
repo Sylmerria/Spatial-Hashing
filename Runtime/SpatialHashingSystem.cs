@@ -79,7 +79,7 @@ namespace HMH.ECS.SpatialHashing
             var removeJob = new RemoveSpatialHashingJob();
             removeJob.SetSpatialHash(ref _spatialHash);
             inputDeps = removeJob.ScheduleSingle(_removeGroup, inputDeps);
-            inputDeps = new RemoveSpatialHashingEndJob() { CommandBuffer = CommandBuffer.ToConcurrent() }.Schedule(_removeGroup, inputDeps);
+            CommandBuffer.RemoveComponent(_removeGroup, typeof(TY));//Remove all component from querry
 
             AddJobHandleForProducer(inputDeps);
 

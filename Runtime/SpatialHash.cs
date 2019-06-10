@@ -767,11 +767,11 @@ namespace HMH.ECS.SpatialHashing
                 bounds.Clamp(_data -> _worldBounds);
 
                 var itemID = Interlocked.Increment(ref _data -> Counter);
+                item.SpatianHashingIndex = itemID;
 
                 if (_itemIDToBounds.TryAdd(itemID, bounds) == false || _itemIDToItem.TryAdd(itemID, item) == false)
                     return false;
 
-                item.SpatianHashingIndex = itemID;
                 CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
                 var hashPosition = new int3(0F);
@@ -818,7 +818,6 @@ namespace HMH.ECS.SpatialHashing
                 if (_itemIDToBounds.TryAdd(itemID, bounds) == false || _itemIDToItem.TryAdd(itemID, item) == false)
                     return;
 
-                item.SpatianHashingIndex = itemID;
                 CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
                 var hashPosition = new int3(0F);
