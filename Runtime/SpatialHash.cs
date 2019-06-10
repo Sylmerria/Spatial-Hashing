@@ -26,14 +26,17 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             DisposeSentinel.Create(out _safety, out _disposeSentinel, 0, label);
 #endif
-            _allocatorLabel          = label;
-            _data                    = (SpatialHashData*)UnsafeUtility.Malloc(sizeof(SpatialHashData), UnsafeUtility.AlignOf<SpatialHashData>(), label);
-            _data -> _worldBounds    = worldBounds;
-            _data -> _worldBoundsMin = worldBounds.Min;
-            _data -> _cellSize       = cellSize;
-            _data -> _cellCount      = worldBounds.GetCellCount(cellSize);
-            _data -> _rayCastBound   = new Bounds();
-            _data -> _hasHit         = false;
+            _allocatorLabel         = label;
+            _data                   = (SpatialHashData*)UnsafeUtility.Malloc(sizeof(SpatialHashData), UnsafeUtility.AlignOf<SpatialHashData>(), label);
+            _data -> WorldBounds    = worldBounds;
+            _data -> WorldBoundsMin = worldBounds.Min;
+            _data -> CellSize       = cellSize;
+            _data -> CellCount      = worldBounds.GetCellCount(cellSize);
+            _data -> RayCastBound   = new Bounds();
+            _data -> HasHit         = false;
+            _data -> Counter        = 0;
+            _data -> RayOrigin      = float3.zero;
+            _data -> RayDirection   = float3.zero;
 
             _buckets            = new NativeMultiHashMap<uint, int>(startSize, label);
             _itemIDToBounds     = new NativeHashMap<int, Bounds>(startSize >> 1, label);
@@ -70,7 +73,7 @@ namespace HMH.ECS.SpatialHashing
 
             var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
-            bounds.Clamp(_data -> _worldBounds);
+            bounds.Clamp(_data -> WorldBounds);
 
             var itemID = ++_data -> Counter;
 
@@ -109,7 +112,7 @@ namespace HMH.ECS.SpatialHashing
             var itemID = item.SpatianHashingIndex;
             var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
-            bounds.Clamp(_data -> _worldBounds);
+            bounds.Clamp(_data -> WorldBounds);
 
             _itemIDToBounds.Remove(itemID); //TODO Replace when hashmap will have value override
             _itemIDToBounds.TryAdd(itemID, bounds);
@@ -231,7 +234,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(success);
 
             var newBounds = new Bounds(item.GetCenter(), item.GetSize());
-            newBounds.Clamp(_data -> _worldBounds);
+            newBounds.Clamp(_data -> WorldBounds);
             _itemIDToBounds.Remove(itemID);
             _itemIDToBounds.TryAdd(itemID, newBounds);
             _itemIDToItem.Remove(itemID);
@@ -307,8 +310,8 @@ namespace HMH.ECS.SpatialHashing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CalculStartEndIterationInternal(SpatialHashData* data, Bounds bounds, out int3 start, out int3 end)
         {
-            start = ((bounds.Min - data -> _worldBoundsMin) / data -> _cellSize).FloorToInt();
-            end   = ((bounds.Max - data -> _worldBoundsMin) / data -> _cellSize).CeilToInt();
+            start = ((bounds.Min - data -> WorldBoundsMin) / data -> CellSize).FloorToInt();
+            end   = ((bounds.Max - data -> WorldBoundsMin) / data -> CellSize).CeilToInt();
         }
 
         public T GetObject(int index)
@@ -357,7 +360,7 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-            bounds.Clamp(_data -> _worldBounds);
+            bounds.Clamp(_data -> WorldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
@@ -398,7 +401,7 @@ namespace HMH.ECS.SpatialHashing
 #endif
 
             var bounds = TransformBounds(obbBounds, rotation);
-            bounds.Clamp(_data -> _worldBounds);
+            bounds.Clamp(_data -> WorldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
@@ -407,7 +410,7 @@ namespace HMH.ECS.SpatialHashing
             var hashPosition = new int3(0F);
 
             //add offset for simplify logic and allowed pruning
-            obbBounds.Size += _data -> _cellSize * 1F;
+            obbBounds.Size += _data -> CellSize * 1F;
 
             var inverseRotation = math.inverse(rotation);
 
@@ -425,9 +428,9 @@ namespace HMH.ECS.SpatialHashing
 
                         var pos = GetPositionVoxel(hashPosition, true);
 
-                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> _cellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> _cellSize.x) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> _cellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> _cellSize.y) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> _cellSize.z * 0.5F), _forward, inverseRotation, _data -> _cellSize.z))
+                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> CellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> CellSize.x) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> CellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> CellSize.y) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> CellSize.z * 0.5F), _forward, inverseRotation, _data -> CellSize.z))
                         {
                             var hash = Hash(hashPosition);
 
@@ -452,14 +455,14 @@ namespace HMH.ECS.SpatialHashing
 #endif
 
             var bounds = TransformBounds(obbBounds, rotation);
-            bounds.Clamp(_data -> _worldBounds);
+            bounds.Clamp(_data -> WorldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
             var hashPosition = new int3(0F);
 
             //add offset for simplify logic and allowed pruning
-            obbBounds.Size += _data -> _cellSize * 1F;
+            obbBounds.Size += _data -> CellSize * 1F;
 
             var inverseRotation = math.inverse(rotation);
 
@@ -477,9 +480,9 @@ namespace HMH.ECS.SpatialHashing
 
                         var pos = GetPositionVoxel(hashPosition, true);
 
-                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> _cellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> _cellSize.x) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> _cellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> _cellSize.y) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> _cellSize.z * 0.5F), _forward, inverseRotation, _data -> _cellSize.z))
+                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> CellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> CellSize.x) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> CellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> CellSize.y) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> CellSize.z * 0.5F), _forward, inverseRotation, _data -> CellSize.z))
                             voxelIndexes.Add(hashPosition);
                     }
                 }
@@ -519,14 +522,14 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
 
-            _data -> _hasHit = false;
+            _data -> HasHit = false;
 
-            _data -> _rayOrigin    = ray.origin;
-            _data -> _rayDirection = ray.direction;
+            _data -> RayOrigin    = ray.origin;
+            _data -> RayDirection = ray.direction;
 
-            _voxelRay.RayCast(ref this, _data -> _rayOrigin, _data -> _rayDirection, length);
+            _voxelRay.RayCast(ref this, _data -> RayOrigin, _data -> RayDirection, length);
 
-            if (_data -> _hasHit == false)
+            if (_data -> HasHit == false)
                 return false;
 
             item = _itemIDToItem[_rayHitValue];
@@ -565,7 +568,7 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
 
-            var deltaSize = size / _data -> _cellSize;
+            var deltaSize = size / _data -> CellSize;
 
             return (int)math.ceil(deltaSize.x) * (int)math.ceil(deltaSize.y) * (int)math.ceil(deltaSize.z);
         }
@@ -575,10 +578,10 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-            var pos = index * _data -> _cellSize + _data -> _worldBoundsMin;
+            var pos = index * _data -> CellSize + _data -> WorldBoundsMin;
 
             if (center)
-                pos += _data -> _cellSize * 0.5F;
+                pos += _data -> CellSize * 0.5F;
 
             return pos;
         }
@@ -588,9 +591,9 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-            position -= _data -> _worldBoundsMin;
+            position -= _data -> WorldBoundsMin;
 
-            position /= _data -> _cellSize;
+            position /= _data -> CellSize;
 
             return position.FloorToInt();
         }
@@ -602,7 +605,7 @@ namespace HMH.ECS.SpatialHashing
         /// <inheritdoc />
         public bool OnTraversingVoxel(int3 voxelIndex)
         {
-            if (math.any(voxelIndex > _data -> _cellCount)) //if voxel still in world
+            if (math.any(voxelIndex > _data -> CellCount)) //if voxel still in world
                 return true;
 
             var hash = Hash(voxelIndex);
@@ -612,10 +615,10 @@ namespace HMH.ECS.SpatialHashing
                 {
                     _itemIDToBounds.TryGetValue(itemID, out var b);
 
-                    if (b.GetEnterPositionAABB(_data -> _rayOrigin, _data -> _rayDirection, 1 << 25, out _) == false)
+                    if (b.GetEnterPositionAABB(_data -> RayOrigin, _data -> RayDirection, 1 << 25, out _) == false)
                         continue;
 
-                    _data -> _hasHit = true;
+                    _data -> HasHit = true;
                     _rayHitValue     = itemID;
 
                     return true;
@@ -632,7 +635,7 @@ namespace HMH.ECS.SpatialHashing
 #endif
             var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
-            bounds.Clamp(_data -> _worldBounds);
+            bounds.Clamp(_data -> WorldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
@@ -730,7 +733,7 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-                return _data -> _cellSize;
+                return _data -> CellSize;
             }
         }
 
@@ -741,14 +744,14 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-                return _data -> _worldBounds;
+                return _data -> WorldBounds;
             }
         }
 
 #if UNITY_EDITOR
         public NativeMultiHashMap<uint, int> DebugBuckets => _buckets;
         public NativeHashMap<int, T> DebugIDToItem => _itemIDToItem;
-        public Bounds DebugRayCastBounds => _data -> _rayCastBound;
+        public Bounds DebugRayCastBounds => _data -> RayCastBound;
         public VoxelRay<SpatialHash<T>> DebugVoxelRay => _voxelRay;
 #endif
 
@@ -764,7 +767,7 @@ namespace HMH.ECS.SpatialHashing
 
                 var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
-                bounds.Clamp(_data -> _worldBounds);
+                bounds.Clamp(_data -> WorldBounds);
 
                 var itemID = Interlocked.Increment(ref _data -> Counter);
                 item.SpatianHashingIndex = itemID;
@@ -812,7 +815,7 @@ namespace HMH.ECS.SpatialHashing
                 var itemID = item.SpatianHashingIndex;
                 var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
-                bounds.Clamp(_data -> _worldBounds);
+                bounds.Clamp(_data -> WorldBounds);
 
                 //TODO Replace with Override
                 if (_itemIDToBounds.TryAdd(itemID, bounds) == false || _itemIDToItem.TryAdd(itemID, item) == false)
@@ -872,18 +875,18 @@ namespace HMH.ECS.SpatialHashing
     [StructLayout(LayoutKind.Sequential)]
     public struct SpatialHashData
     {
-        public Bounds _worldBounds;    //24
-        public float3 _worldBoundsMin; //12
+        public Bounds WorldBounds;    //24
+        public float3 WorldBoundsMin; //12
 
-        public Bounds _rayCastBound; //24
-        public float3 _cellSize;     //12
+        public Bounds RayCastBound; //24
+        public float3 CellSize;     //12
 
-        public float3 _rayOrigin;    //12
-        public float3 _rayDirection; //12
-        public int3   _cellCount;    //12
+        public float3 RayOrigin;    //12
+        public float3 RayDirection; //12
+        public int3   CellCount;    //12
 
         public int  Counter; //4
-        public bool _hasHit; //1
+        public bool HasHit;  //1
     }
 
     public interface ISpatialHashingItem<T> : IEquatable<T>
