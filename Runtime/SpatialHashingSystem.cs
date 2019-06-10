@@ -155,26 +155,6 @@ namespace HMH.ECS.SpatialHashing
             #endregion
         }
 
-        internal struct RemoveSpatialHashingEndJob : IJobForEachWithEntity<TY>
-        {
-            #region Implementation of IJobProcessComponentDataWithEntity<T>
-
-            /// <inheritdoc />
-            public void Execute(Entity entity, int index, [ReadOnly] ref TY mirror)
-            {
-                CommandBuffer.RemoveComponent<TY>(index, entity);
-            }
-
-            #endregion
-
-            #region Variables
-
-            public EntityCommandBuffer.Concurrent CommandBuffer;
-
-            #endregion
-
-        }
-
         [BurstCompile]
         public struct UpdateSpatialHashingRemoveFastJob : IJobForEach<T>
         {
@@ -208,7 +188,7 @@ namespace HMH.ECS.SpatialHashing
             /// <inheritdoc />
             public void Execute([ChangedFilter] ref T item)
             {
-                SpatialHash.TryAdd(ref item);
+                SpatialHash.AddFast(ref item);
             }
 
             #endregion
