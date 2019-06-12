@@ -197,16 +197,19 @@ namespace HMH.ECS.SpatialHashing.Test
 
             #endregion
 
-            item = _entityManager.GetComponentData<Item>(e);
-            item.Center=new float3(51.5F);
+            _entityManager.AddComponentData(e, new EmptyData());
+            item        = _entityManager.GetComponentData<Item>(e);
+            item.Center = new float3(51.5F);
             _entityManager.SetComponentData(e, item);
 
             system.Update();
             _entityManager.CompleteAllJobs();
             barrier.Update();
             _entityManager.CompleteAllJobs();
+            system.Barrier.Update();
 
-            Assert.IsTrue(_entityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
+            Assert.IsTrue(_entityManager.HasComponent(e, typeof(ItemMirror)));
+            Assert.IsFalse(_entityManager.HasComponent(e, typeof(EmptyData)));
             Assert.AreEqual(1, _entityManager.GetComponentData<ItemMirror>(e).GetItemID);
 
             sh = system.SpatialHash;
@@ -246,7 +249,7 @@ namespace HMH.ECS.SpatialHashing.Test
             results.Dispose();
         }
 
-        internal class SystemTest : SpatialHashingSystem<Item, ItemMirror>
+        private class SystemTest : SpatialHashingSystem<Item, ItemMirror, EmptyData>
         {
             #region Overrides of SpatialHashingSystem<Item,ItemMirror>
 
@@ -287,5 +290,8 @@ namespace HMH.ECS.SpatialHashing.Test
 
             #endregion
         }
+
+        public struct EmptyData : IComponentData
+        { }
     }
 }

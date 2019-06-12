@@ -5,7 +5,9 @@ using Unity.Jobs;
 
 namespace HMH.ECS.SpatialHashing
 {
-    public abstract class SpatialHashingSystem<T, TY> : JobComponentSystem where T : struct, ISpatialHashingItem<T>, IComponentData where TY : struct, ISpatialHashingItemMiror
+    public abstract class SpatialHashingSystem<T, TY, TZ> : JobComponentSystem where T : struct, ISpatialHashingItem<T>, IComponentData
+                                                                               where TY : struct, ISpatialHashingItemMiror
+                                                                               where TZ : struct, IComponentData
     {
         #region Overrides of ScriptBehaviourManager
 
@@ -15,7 +17,7 @@ namespace HMH.ECS.SpatialHashing
             InitSpatialHashing();
 
             _addGroup    = GetEntityQuery(ComponentType.ReadWrite<T>(), ComponentType.Exclude<TY>());
-            _updateGroup = GetEntityQuery(ComponentType.ReadWrite<T>(), ComponentType.ReadWrite<TY>());
+            _updateGroup = GetEntityQuery(ComponentType.ReadWrite<T>(), ComponentType.ReadOnly<TY>(), ComponentType.ReadOnly<TZ>());
             _removeGroup = GetEntityQuery(ComponentType.Exclude<T>(), ComponentType.ReadOnly<TY>());
         }
 
@@ -76,10 +78,14 @@ namespace HMH.ECS.SpatialHashing
             inputDeps = updateRemoveJob.ScheduleSingle(_updateGroup, inputDeps);
             inputDeps = new UpdateSpatialHashingAddFastJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_updateGroup, inputDeps);
 
+            if (RemoveUpdateComponent)
+                CommandBuffer.RemoveComponent(_updateGroup, typeof(TZ)); //Remove all component from query
+
             var removeJob = new RemoveSpatialHashingJob();
             removeJob.SetSpatialHash(ref _spatialHash);
             inputDeps = removeJob.ScheduleSingle(_removeGroup, inputDeps);
-            CommandBuffer.RemoveComponent(_removeGroup, typeof(TY));//Remove all component from querry
+
+            CommandBuffer.RemoveComponent(_removeGroup, typeof(TY)); //Remove all component from query
 
             AddJobHandleForProducer(inputDeps);
 
@@ -161,7 +167,7 @@ namespace HMH.ECS.SpatialHashing
             #region Implementation of IJobProcessComponentData<T>
 
             /// <inheritdoc />
-            public void Execute([ReadOnly, ChangedFilter] ref T item)
+            public void Execute([ReadOnly] ref T item)
             {
                 _spatialHash.Remove(item.SpatialHashingIndex);
             }
@@ -186,7 +192,7 @@ namespace HMH.ECS.SpatialHashing
             #region Implementation of IJobProcessComponentData<T>
 
             /// <inheritdoc />
-            public void Execute([ChangedFilter] ref T item)
+            public void Execute([ReadOnly] ref T item)
             {
                 SpatialHash.AddFast(ref item);
             }
@@ -199,7 +205,6 @@ namespace HMH.ECS.SpatialHashing
 
             #endregion
         }
-
         #endregion
 
         #region Variables
@@ -215,6 +220,7 @@ namespace HMH.ECS.SpatialHashing
         #region Properties
 
         protected abstract EntityCommandBuffer CommandBuffer { get; }
+        public bool RemoveUpdateComponent { get; set; } = true;
 
         #endregion
 
