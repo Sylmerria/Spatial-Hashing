@@ -70,6 +70,9 @@ namespace HMH.ECS.SpatialHashing
         /// <inheritdoc />
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            //NativeHashmap can't resize when they are in concurent mode so prepare free place before
+            _spatialHash.PrepareFreePlace(_addGroup.CalculateLength());
+
             inputDeps = new AddSpatialHashingJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_addGroup, inputDeps);
             inputDeps = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.ToConcurrent() }.Schedule(_addGroup, inputDeps);
 

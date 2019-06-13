@@ -328,6 +328,18 @@ namespace HMH.ECS.SpatialHashing
             return default(T);
         }
 
+        public void PrepareFreePlace(int count)
+        {
+            while (_buckets.Capacity - _buckets.Length < count)
+                _buckets.Capacity *= 2;
+
+            while (_itemIDToBounds.Capacity - _itemIDToBounds.Length < count)
+                _itemIDToBounds.Capacity *= 2;
+
+            while (_itemIDToItem.Capacity - _itemIDToItem.Length < count)
+                _itemIDToItem.Capacity *= 2;
+        }
+
         #endregion
 
         #region Query
