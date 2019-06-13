@@ -18,7 +18,7 @@ namespace HMH.ECS.SpatialHashing
     public unsafe struct SpatialHash<T> : IDisposable, IRay where T : struct, ISpatialHashingItem<T>
     {
         public SpatialHash(Bounds worldBounds, float3 cellSize, Allocator label)
-            : this(worldBounds, cellSize, worldBounds.GetCellCount(cellSize).Mul(), label)
+            : this(worldBounds, cellSize, worldBounds.GetCellCount(cellSize).Mul() * 3, label)
         { }
 
         public SpatialHash(Bounds worldBounds, float3 cellSize, int startSize, Allocator label)
@@ -402,6 +402,37 @@ namespace HMH.ECS.SpatialHashing
             }
 
             ExtractValueFromHashMap(hashMapUnic, bounds, resultList);
+        }
+
+        public void Query(Bounds bounds, NativeList<int3> voxelIndexes)
+        {
+            Assert.IsTrue(voxelIndexes.IsCreated);
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+#endif
+            bounds.Clamp(_data -> WorldBounds);
+
+            CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
+
+            var hashPosition = new int3(0F);
+
+            for (int x = start.x; x < end.x; ++x)
+            {
+                hashPosition.x = x;
+
+                for (int y = start.y; y < end.y; ++y)
+                {
+                    hashPosition.y = y;
+
+                    for (int z = start.z; z < end.z; ++z)
+                    {
+                        hashPosition.z = z;
+
+                        voxelIndexes.Add(hashPosition);
+                    }
+                }
+            }
         }
 
         public void Query(Bounds obbBounds, quaternion rotation, NativeList<T> resultList)
