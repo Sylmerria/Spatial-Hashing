@@ -791,6 +791,17 @@ namespace HMH.ECS.SpatialHashing
             }
         }
 
+        public int3 CellCount
+        {
+            get
+            {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                AtomicSafetyHandle.CheckReadAndThrow(_safety);
+#endif
+                return _data -> CellCount;
+            }
+        }
+
 #if UNITY_EDITOR
         public NativeMultiHashMap<uint, int> DebugBuckets => _buckets;
         public NativeHashMap<int, T> DebugIDToItem => _itemIDToItem;
