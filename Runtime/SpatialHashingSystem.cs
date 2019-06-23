@@ -49,7 +49,10 @@ namespace HMH.ECS.SpatialHashing
             base.OnStopRunning();
 
             if (_spatialHash.IsCreated)
+            {
+                World.Active.EntityManager.CompleteAllJobs(); //need to avoid error spawn
                 _spatialHash.Clear();
+            }
         }
 
         /// <inheritdoc />
