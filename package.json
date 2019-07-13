@@ -1,11 +1,11 @@
 {
   "name": "com.lennethproduction.spatialhashing",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "displayName": "Spatial Hashing",
   "description": "Spatial hashing for Unity using ECS",
   "unity": "2019.1",
   "dependencies": {
-    "com.unity.burst": "1.0.4",
+    "com.unity.burst": "1.1.1",
     "com.unity.collections": "0.0.9-preview.20",
     "com.unity.entities": "0.0.12-preview.33",
     "com.unity.jobs": "0.0.7-preview.13",
