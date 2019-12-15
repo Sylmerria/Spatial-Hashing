@@ -9,7 +9,7 @@
     "com.unity.collections": "0.3.0-preview.0",
     "com.unity.entities": "0.3.0-preview.4",
     "com.unity.jobs": "0.2.1-preview.3",
-    "com.unity.mathematics": "1.1.0",
+    "com.unity.mathematics": "1.1.0"
   },
   "keywords": [
     "ECS",
