@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -219,9 +218,7 @@ namespace HMH.ECS.SpatialHashing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void RemoveInternal(int3 voxelPosition, int itemID)
         {
-            var success = _buckets.TryRemove(Hash(voxelPosition), itemID);
-
-            Assert.IsTrue(success);
+           _buckets.Remove(Hash(voxelPosition), itemID);
         }
 
         public void Move(T item)
@@ -710,9 +707,9 @@ namespace HMH.ECS.SpatialHashing
             {
                 _data           = _data,
                 _safety         = _safety,
-                _itemIDToBounds = _itemIDToBounds.ToConcurrent(),
-                _itemIDToItem   = _itemIDToItem.ToConcurrent(),
-                _buckets        = _buckets.ToConcurrent()
+                _itemIDToBounds = _itemIDToBounds.AsParallelWriter(),
+                _itemIDToItem   = _itemIDToItem.AsParallelWriter(),
+                _buckets        = _buckets.AsParallelWriter()
             };
         }
 
@@ -903,9 +900,9 @@ namespace HMH.ECS.SpatialHashing
             [NativeDisableUnsafePtrRestriction]
             internal SpatialHashData* _data;
 
-            internal NativeMultiHashMap<uint, int>.Concurrent _buckets;        //4
-            internal NativeHashMap<int, Bounds>.Concurrent    _itemIDToBounds; //4
-            internal NativeHashMap<int, T>.Concurrent         _itemIDToItem;   //4
+            internal NativeMultiHashMap<uint, int>.ParallelWriter _buckets;        //4
+            internal NativeHashMap<int, Bounds>.ParallelWriter _itemIDToBounds; //4
+            internal NativeHashMap<int, T>.ParallelWriter _itemIDToItem;   //4
 
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS

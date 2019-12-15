@@ -21,8 +21,6 @@ namespace HMH.ECS.SpatialHashing
             _removeGroup = GetEntityQuery(ComponentType.Exclude<T>(), ComponentType.ReadOnly<TY>());
         }
 
-        #region Overrides of ComponentSystemBase
-
         /// <inheritdoc />
         protected override void OnStartRunning()
         {
@@ -30,7 +28,7 @@ namespace HMH.ECS.SpatialHashing
 
             var alreadyExistingGroup = GetEntityQuery(ComponentType.ReadWrite<T>(), ComponentType.ReadWrite<TY>());
 
-            if (alreadyExistingGroup.CalculateLength() > 0)
+            if (alreadyExistingGroup.CalculateEntityCount() > 0)
             {
                 var items = alreadyExistingGroup.ToComponentDataArray<T>(Allocator.Temp);
 
@@ -64,8 +62,6 @@ namespace HMH.ECS.SpatialHashing
                 _spatialHash.Dispose();
         }
 
-        #endregion
-
         protected abstract void InitSpatialHashing();
 
         #endregion
@@ -74,7 +70,7 @@ namespace HMH.ECS.SpatialHashing
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             //NativeHashmap can't resize when they are in concurent mode so prepare free place before
-            _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateLength()*1.5F)); //strangely resize just for the good length doesn't give enough space
+            _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateEntityCount() * 1.5F)); //strangely resize just for the good length doesn't give enough space
 
             inputDeps = new AddSpatialHashingJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_addGroup, inputDeps);
             inputDeps = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.ToConcurrent() }.Schedule(_addGroup, inputDeps);
@@ -211,6 +207,7 @@ namespace HMH.ECS.SpatialHashing
 
             #endregion
         }
+
         #endregion
 
         #region Variables
@@ -229,7 +226,6 @@ namespace HMH.ECS.SpatialHashing
         public bool RemoveUpdateComponent { get; set; } = true;
 
         #endregion
-
     }
 
     public interface ISpatialHashingItemMiror : ISystemStateComponentData

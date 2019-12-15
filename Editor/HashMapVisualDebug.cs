@@ -98,9 +98,9 @@ namespace HMH.ECS.SpatialHashing.Debug
 
         private void FixedUpdate()
         {
-            World.Active.EntityManager.CompleteAllJobs();
+            World.DefaultGameObjectInjectionWorld.EntityManager.CompleteAllJobs();
 
-            NativeList<ItemTest> itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
+            var itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
 
             for (var i = 0; i < _listItem.Count; i++)
             {
