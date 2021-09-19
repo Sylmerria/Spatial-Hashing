@@ -113,10 +113,8 @@ namespace HMH.ECS.SpatialHashing
 
             bounds.Clamp(_data -> WorldBounds);
 
-            _itemIDToBounds.Remove(itemID); //TODO Replace when hashmap will have value override
-            _itemIDToBounds.TryAdd(itemID, bounds);
-            _itemIDToItem.Remove(itemID); //TODO Replace when hashmap will have value override
-            _itemIDToItem.TryAdd(itemID, item);
+            _itemIDToBounds[itemID] = bounds;
+            _itemIDToItem[itemID]   = item;
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
@@ -181,7 +179,7 @@ namespace HMH.ECS.SpatialHashing
         }
 
         /// <summary>
-        /// Remove method used for move or scale an item; 
+        /// Remove method used for move or scale an item;
         /// </summary>
         /// <param name="itemID"></param>
         public void RemoveFast(int itemID)
@@ -218,7 +216,7 @@ namespace HMH.ECS.SpatialHashing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void RemoveInternal(int3 voxelPosition, int itemID)
         {
-           _buckets.Remove(Hash(voxelPosition), itemID);
+            _buckets.Remove(Hash(voxelPosition), itemID);
         }
 
         public void Move(T item)
@@ -327,13 +325,13 @@ namespace HMH.ECS.SpatialHashing
 
         public void PrepareFreePlace(int count)
         {
-            while (_buckets.Capacity - _buckets.Length < count)
+            while (_buckets.Capacity - _buckets.Count() < count)
                 _buckets.Capacity *= 2;
 
-            while (_itemIDToBounds.Capacity - _itemIDToBounds.Length < count)
+            while (_itemIDToBounds.Capacity - _itemIDToBounds.Count() < count)
                 _itemIDToBounds.Capacity *= 2;
 
-            while (_itemIDToItem.Capacity - _itemIDToItem.Length < count)
+            while (_itemIDToItem.Capacity - _itemIDToItem.Count() < count)
                 _itemIDToItem.Capacity *= 2;
         }
 
@@ -659,7 +657,7 @@ namespace HMH.ECS.SpatialHashing
                         continue;
 
                     _data -> HasHit = true;
-                    _rayHitValue     = itemID;
+                    _rayHitValue    = itemID;
 
                     return true;
                 } while (_buckets.TryGetNextValue(out itemID, ref it));
@@ -751,7 +749,7 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-                return _itemIDToBounds.Length;
+                return _itemIDToBounds.Count();
             }
         }
 
@@ -762,7 +760,7 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckReadAndThrow(_safety);
 #endif
-                return _buckets.Length;
+                return _buckets.Count();
             }
         }
 
@@ -901,9 +899,8 @@ namespace HMH.ECS.SpatialHashing
             internal SpatialHashData* _data;
 
             internal NativeMultiHashMap<uint, int>.ParallelWriter _buckets;        //4
-            internal NativeHashMap<int, Bounds>.ParallelWriter _itemIDToBounds; //4
-            internal NativeHashMap<int, T>.ParallelWriter _itemIDToItem;   //4
-
+            internal NativeHashMap<int, Bounds>.ParallelWriter    _itemIDToBounds; //4
+            internal NativeHashMap<int, T>.ParallelWriter         _itemIDToItem;   //4
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             internal AtomicSafetyHandle _safety;
@@ -913,11 +910,6 @@ namespace HMH.ECS.SpatialHashing
             #pragma warning disable 649
             internal int _threadIndex;
             #pragma warning restore 649
-
-            #endregion
-
-            #region Properties
-
 
             #endregion
         }

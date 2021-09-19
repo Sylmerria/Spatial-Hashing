@@ -12,7 +12,7 @@ namespace HMH.ECS.SpatialHashing
         #region Overrides of ScriptBehaviourManager
 
         /// <inheritdoc />
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
             InitSpatialHashing();
 
@@ -48,15 +48,15 @@ namespace HMH.ECS.SpatialHashing
 
             if (_spatialHash.IsCreated)
             {
-                World.Active.EntityManager.CompleteAllJobs(); //need to avoid error spawn
+                World.EntityManager.CompleteAllJobs(); //need to avoid error spawn
                 _spatialHash.Clear();
             }
         }
 
         /// <inheritdoc />
-        protected override void OnDestroyManager()
+        protected override void OnDestroy()
         {
-            base.OnDestroyManager();
+            base.OnDestroy();
 
             if (_spatialHash.IsCreated)
                 _spatialHash.Dispose();
@@ -73,7 +73,7 @@ namespace HMH.ECS.SpatialHashing
             _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateEntityCount() * 1.5F)); //strangely resize just for the good length doesn't give enough space
 
             inputDeps = new AddSpatialHashingJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_addGroup, inputDeps);
-            inputDeps = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.ToConcurrent() }.Schedule(_addGroup, inputDeps);
+            inputDeps = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.AsParallelWriter() }.Schedule(_addGroup, inputDeps);
 
             var updateRemoveJob = new UpdateSpatialHashingRemoveFastJob();
             updateRemoveJob.SetSpatialHash(ref _spatialHash);
@@ -133,7 +133,7 @@ namespace HMH.ECS.SpatialHashing
 
             #region Variables
 
-            public EntityCommandBuffer.Concurrent CommandBuffer;
+            public EntityCommandBuffer.ParallelWriter CommandBuffer;
 
             #endregion
         }

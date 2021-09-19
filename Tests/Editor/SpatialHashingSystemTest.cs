@@ -1,7 +1,6 @@
 ﻿using NUnit.Framework;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Entities.Tests;
 using Unity.Jobs;
 using Unity.Mathematics;
 
@@ -12,21 +11,21 @@ namespace HMH.ECS.SpatialHashing.Test
         [Test]
         public void TestAdd()
         {
-            var e    = _entityManager.CreateEntity();
+            var e    = EntityManager.CreateEntity();
             var item = new Item { Center = new float3(50.5F), Size = new float3(1.1F) };
-            _entityManager.AddComponentData(e, item);
+            EntityManager.AddComponentData(e, item);
 
             EntityCommandBufferSystem barrier = World.CreateSystem<BeginInitializationEntityCommandBufferSystem>();
             var                       system  = World.CreateSystem<SystemTest>();
             system.Barrier = barrier;
 
             system.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
             barrier.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
 
-            Assert.IsTrue(_entityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
-            Assert.AreEqual(1, _entityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
+            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
 
             var sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -70,21 +69,21 @@ namespace HMH.ECS.SpatialHashing.Test
         {
             #region Add
 
-            var e    = _entityManager.CreateEntity();
+            var e    = EntityManager.CreateEntity();
             var item = new Item { Center = new float3(50.5F), Size = new float3(1.1F) };
-            _entityManager.AddComponentData(e, item);
+            EntityManager.AddComponentData(e, item);
 
             EntityCommandBufferSystem barrier = World.CreateSystem<BeginInitializationEntityCommandBufferSystem>();
             var                       system  = World.CreateSystem<SystemTest>();
             system.Barrier = barrier;
 
             system.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
             barrier.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
 
-            Assert.IsTrue(_entityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
-            Assert.AreEqual(1, _entityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
+            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
 
             var sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -124,14 +123,14 @@ namespace HMH.ECS.SpatialHashing.Test
 
             #endregion
 
-            _entityManager.RemoveComponent<Item>(e);
+            EntityManager.RemoveComponent<Item>(e);
 
             system.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
             barrier.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
 
-            Assert.IsFalse(_entityManager.HasComponent<ItemMirror>(e));
+            Assert.IsFalse(EntityManager.HasComponent<ItemMirror>(e));
 
             sh = system.SpatialHash;
             Assert.AreEqual(0, sh.ItemCount);
@@ -143,21 +142,21 @@ namespace HMH.ECS.SpatialHashing.Test
         {
             #region Add
 
-            var e    = _entityManager.CreateEntity();
+            var e    = EntityManager.CreateEntity();
             var item = new Item { Center = new float3(50.5F), Size = new float3(1.1F) };
-            _entityManager.AddComponentData(e, item);
+            EntityManager.AddComponentData(e, item);
 
             EntityCommandBufferSystem barrier = World.CreateSystem<BeginInitializationEntityCommandBufferSystem>();
             var                       system  = World.CreateSystem<SystemTest>();
             system.Barrier = barrier;
 
             system.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
             barrier.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
 
-            Assert.IsTrue(_entityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
-            Assert.AreEqual(1, _entityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
+            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
 
             var sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -197,20 +196,20 @@ namespace HMH.ECS.SpatialHashing.Test
 
             #endregion
 
-            _entityManager.AddComponentData(e, new EmptyData());
-            item        = _entityManager.GetComponentData<Item>(e);
+            EntityManager.AddComponentData(e, new EmptyData());
+            item        = EntityManager.GetComponentData<Item>(e);
             item.Center = new float3(51.5F);
-            _entityManager.SetComponentData(e, item);
+            EntityManager.SetComponentData(e, item);
 
             system.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
             barrier.Update();
-            _entityManager.CompleteAllJobs();
+            EntityManager.CompleteAllJobs();
             system.Barrier.Update();
 
-            Assert.IsTrue(_entityManager.HasComponent(e, typeof(ItemMirror)));
-            Assert.IsFalse(_entityManager.HasComponent(e, typeof(EmptyData)));
-            Assert.AreEqual(1, _entityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, typeof(ItemMirror)));
+            Assert.IsFalse(EntityManager.HasComponent(e, typeof(EmptyData)));
+            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
 
             sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);

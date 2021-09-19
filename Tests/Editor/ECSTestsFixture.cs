@@ -1,111 +1,57 @@
 ﻿using NUnit.Framework;
-using System.Linq;
-using Unity.Collections;
-using Unity.Jobs;
+using Unity.Entities;
 
-namespace Unity.Entities.Tests
+namespace HMH.ECS.SpatialHashing.Test
 {
-
-#if NET_DOTS
-    public class EmptySystem : ComponentSystem
+    public class ECSTestsFixture
     {
-        protected override void OnUpdate()
-        {
-
-        }
-        public new EntityQuery GetEntityQuery(params EntityQueryDesc[] queriesDesc)
-        {
-            return base.GetEntityQuery(queriesDesc);
-        }
-
-        public new EntityQuery GetEntityQuery(params ComponentType[] componentTypes)
-        {
-            return base.GetEntityQuery(componentTypes);
-        }
-        public new EntityQuery GetEntityQuery(NativeArray<ComponentType> componentTypes)
-        {
-            return base.GetEntityQuery(componentTypes);
-        }
-        public BufferFromEntity<T> GetBufferFromEntity<T>(bool isReadOnly = false) where T : struct, IBufferElementData
-        {
-            AddReaderWriter(isReadOnly ? ComponentType.ReadOnly<T>() : ComponentType.ReadWrite<T>());
-            return EntityManager.GetBufferFromEntity<T>(isReadOnly);
-        }
-    }
-#else
-    public class EmptySystem : JobComponentSystem
-    {
-        protected override JobHandle OnUpdate(JobHandle dep) { return dep; }
-
-
-        new public EntityQuery GetEntityQuery(params EntityQueryDesc[] queriesDesc)
-        {
-            return base.GetEntityQuery(queriesDesc);
-        }
-
-        new public EntityQuery GetEntityQuery(params ComponentType[] componentTypes)
-        {
-            return base.GetEntityQuery(componentTypes);
-        }
-        new public EntityQuery GetEntityQuery(NativeArray<ComponentType> componentTypes)
-        {
-            return base.GetEntityQuery(componentTypes);
-        }
-    }
-#endif
-    public abstract class ECSTestsFixture
-    {
-        protected World                            m_PreviousWorld;
-        protected World                            World;
-        protected EntityManager                    _entityManager;
-        protected EntityManager.EntityManagerDebug m_ManagerDebug;
-
-        protected int StressTestEntityCount = 1000;
+        protected World PreviousWorld { get; private set; }
+        protected World World { get; private set; }
+        protected EntityManager EntityManager { get; private set; }
+        protected EntityManager.EntityManagerDebug EntityManagerDebug { get; private set; }
 
         [SetUp]
         public virtual void Setup()
         {
-            m_PreviousWorld = World.Active;
-#if !UNITY_DOTSPLAYER
-            World = World.Active = new World("Test World");
-#else
-            World = DefaultTinyWorldInitialization.Initialize("Test World");
-#endif
+            PreviousWorld = World.DefaultGameObjectInjectionWorld;
+            World         = World.DefaultGameObjectInjectionWorld = new World("Test World");
 
-            _entityManager = World.EntityManager;
-            m_ManagerDebug = new EntityManager.EntityManagerDebug(_entityManager);
+            EntityManager      = World.EntityManager;
+            EntityManagerDebug = new EntityManager.EntityManagerDebug(EntityManager);
 
-#if !UNITY_DOTSPLAYER
-#if !UNITY_2019_2_OR_NEWER
-            // Not raising exceptions can easily bring unity down with massive logging when tests fail.
-            // From Unity 2019.2 on this field is always implicitly true and therefore removed.
-
-            UnityEngine.Assertions.Assert.raiseExceptions = true;
-#endif  // #if !UNITY_2019_2_OR_NEWER
-#endif  // #if !UNITY_DOTSPLAYER
+            World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+            World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+            World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+            World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
         }
 
         [TearDown]
         public virtual void TearDown()
         {
-            if (_entityManager != null && _entityManager.IsCreated)
+            if (World != null)
             {
                 // Clean up systems before calling CheckInternalConsistency because we might have filters etc
                 // holding on SharedComponentData making checks fail
-                while (World.Systems.ToArray().Length > 0)
-                    World.DestroySystem(World.Systems.ToArray()[0]);
+                while (World.Systems.Count > 0)
+                {
+                    World.DestroySystem(World.Systems[0]);
+                }
 
-                m_ManagerDebug.CheckInternalConsistency();
+                EntityManagerDebug.CheckInternalConsistency();
 
                 World.Dispose();
                 World = null;
 
-                World.Active = m_PreviousWorld;
-                m_PreviousWorld = null;
-                _entityManager = null;
+                World.DefaultGameObjectInjectionWorld = PreviousWorld;
+                PreviousWorld                         = null;
+                EntityManager                         = default;
             }
         }
-        
-        public EmptySystem EmptySystem => World.Active.GetOrCreateSystem<EmptySystem>();
+
+        public virtual Entity CreateEntity(int index, int version)
+        {
+            return new Entity { Index = index, Version = version };
+        }
     }
 }
