@@ -3,7 +3,7 @@
   "version": "1.4.0",
   "displayName": "Spatial Hashing",
   "description": "Spatial hashing for Unity using ECS",
-  "unity": "2020.3.12f1",
+  "unity": "2020.3",
   "dependencies": {
     "com.unity.burst": "1.5.6",
     "com.unity.collections": "0.15.0-preview.21",
