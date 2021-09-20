@@ -248,6 +248,7 @@ namespace HMH.ECS.SpatialHashing.Test
             results.Dispose();
         }
 
+        [DisableAutoCreation]
         private class SystemTest : SpatialHashingSystem<Item, ItemMirror, EmptyData>
         {
             #region Overrides of SpatialHashingSystem<Item,ItemMirror>

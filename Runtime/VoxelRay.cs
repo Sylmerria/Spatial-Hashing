@@ -13,7 +13,7 @@ namespace HMH.ECS.SpatialHashing
         /**
          * Casts the ray from its starting position towards its direction whilst keeping in mind its length. A lambda parameter is supplied and called each time a voxel is traversed.
          * This allows the lambda to stop anytime the algorithm to continue its loop.
-         * <p>
+         *
          * This method is local because the parameter voxelIndex is locally changed to avoid creating a new instance of {@link Vector3i}.
          *
          * @param voxelHalfExtent   The half extent (radius) of a voxel.
