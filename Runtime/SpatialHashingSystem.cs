@@ -5,9 +5,9 @@ using Unity.Jobs;
 
 namespace HMH.ECS.SpatialHashing
 {
-    public abstract partial class SpatialHashingSystem<T, TY, TZ> : JobComponentSystem where T : struct, ISpatialHashingItem<T>, IComponentData
-                                                                                       where TY : struct, ISpatialHashingItemMiror
-                                                                                       where TZ : struct, IComponentData
+    public abstract partial class SpatialHashingSystem<T, TY, TZ> : SystemBase where T : struct, ISpatialHashingItem<T>, IComponentData
+                                                                               where TY : struct, ISpatialHashingItemMiror
+                                                                               where TZ : struct, IComponentData
     {
         /// <inheritdoc />
         protected override void OnCreate()
@@ -63,31 +63,29 @@ namespace HMH.ECS.SpatialHashing
         protected abstract void InitSpatialHashing();
 
         /// <inheritdoc />
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        protected override void OnUpdate()
         {
             //NativeHashmap can't resize when they are in concurent mode so prepare free place before
             _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateEntityCount() * 1.5F)); //strangely resize just for the good length doesn't give enough space
 
-            inputDeps = new AddSpatialHashingJob { SpatialHash      = _spatialHash.ToConcurrent() }.Schedule(_addGroup, inputDeps);
-            inputDeps = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.AsParallelWriter() }.Schedule(_addGroup, inputDeps);
+            Dependency = new AddSpatialHashingJob { SpatialHash      = _spatialHash.ToConcurrent() }.Schedule(_addGroup, Dependency);
+            Dependency = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.AsParallelWriter() }.Schedule(_addGroup, Dependency);
 
             var updateRemoveJob = new UpdateSpatialHashingRemoveFastJob();
             updateRemoveJob.SetSpatialHash(ref _spatialHash);
-            inputDeps = updateRemoveJob.ScheduleSingle(_updateGroup, inputDeps);
-            inputDeps = new UpdateSpatialHashingAddFastJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_updateGroup, inputDeps);
+            Dependency = updateRemoveJob.ScheduleSingle(_updateGroup, Dependency);
+            Dependency = new UpdateSpatialHashingAddFastJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_updateGroup, Dependency);
 
             if (RemoveUpdateComponent)
                 CommandBuffer.RemoveComponent(_updateGroup, typeof(TZ)); //Remove all component from query
 
             var removeJob = new RemoveSpatialHashingJob();
             removeJob.SetSpatialHash(ref _spatialHash);
-            inputDeps = removeJob.ScheduleSingle(_removeGroup, inputDeps);
+            Dependency = removeJob.ScheduleSingle(_removeGroup, Dependency);
 
             CommandBuffer.RemoveComponent(_removeGroup, typeof(TY)); //Remove all component from query
 
-            AddJobHandleForProducer(inputDeps);
-
-            return inputDeps;
+            AddJobHandleForProducer(Dependency);
         }
 
         protected abstract void AddJobHandleForProducer(JobHandle inputDeps);
