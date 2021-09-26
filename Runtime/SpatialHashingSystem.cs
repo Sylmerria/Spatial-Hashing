@@ -63,10 +63,12 @@ namespace HMH.ECS.SpatialHashing
         protected abstract void InitSpatialHashing();
 
         /// <inheritdoc />
-        protected override void OnUpdate()
+        protected sealed override void OnUpdate()
         {
             //NativeHashmap can't resize when they are in concurent mode so prepare free place before
             _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateEntityCount() * 1.5F)); //strangely resize just for the good length doesn't give enough space
+
+            OnPreUpdate();
 
             Dependency = new AddSpatialHashingJob { SpatialHash      = _spatialHash.ToConcurrent() }.Schedule(_addGroup, Dependency);
             Dependency = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.AsParallelWriter() }.Schedule(_addGroup, Dependency);
@@ -85,8 +87,16 @@ namespace HMH.ECS.SpatialHashing
 
             CommandBuffer.RemoveComponent(_removeGroup, typeof(TY)); //Remove all component from query
 
+            OnPostUpdate();
+
             AddJobHandleForProducer(Dependency);
         }
+
+        protected virtual void OnPreUpdate()
+        { }
+
+        protected virtual void OnPostUpdate()
+        { }
 
         protected abstract void AddJobHandleForProducer(JobHandle inputDeps);
 
