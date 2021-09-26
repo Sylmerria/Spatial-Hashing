@@ -320,19 +320,19 @@ namespace HMH.ECS.SpatialHashing
 
             Assert.IsTrue(false);
 
-            return default(T);
+            return default;
         }
 
         public void PrepareFreePlace(int count)
         {
-            while (_buckets.Capacity - _buckets.Count() < count)
-                _buckets.Capacity *= 2;
+            if (_buckets.Capacity - _buckets.Count() < count)
+                _buckets.Capacity = math.ceilpow2(_buckets.Count() + count);
 
-            while (_itemIDToBounds.Capacity - _itemIDToBounds.Count() < count)
-                _itemIDToBounds.Capacity *= 2;
+            if (_itemIDToBounds.Capacity - _itemIDToBounds.Count() < count)
+                _itemIDToBounds.Capacity = math.ceilpow2(_itemIDToBounds.Count() + count);
 
-            while (_itemIDToItem.Capacity - _itemIDToItem.Count() < count)
-                _itemIDToItem.Capacity *= 2;
+            if (_itemIDToItem.Capacity - _itemIDToItem.Count() < count)
+                _itemIDToItem.Capacity = math.ceilpow2(_itemIDToItem.Count() + count);
         }
 
         #endregion
