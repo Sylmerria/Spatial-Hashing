@@ -5,9 +5,9 @@ using Unity.Jobs;
 
 namespace HMH.ECS.SpatialHashing
 {
-    public abstract partial class SpatialHashingSystem<T, TY, TZ> : SystemBase where T : struct, ISpatialHashingItem<T>, IComponentData
-                                                                               where TY : struct, ISpatialHashingItemMiror
-                                                                               where TZ : struct, IComponentData
+    public abstract partial class SpatialHashingSystem<T, TY, TZ> : SystemBase where T : unmanaged, ISpatialHashingItem<T>, IComponentData
+                                                                               where TY : unmanaged, ISpatialHashingItemMiror
+                                                                               where TZ : unmanaged, IComponentData
     {
         /// <inheritdoc />
         protected override void OnCreate()
@@ -68,24 +68,30 @@ namespace HMH.ECS.SpatialHashing
             //NativeHashmap can't resize when they are in concurent mode so prepare free place before
             _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateEntityCount() * 1.5F)); //strangely resize just for the good length doesn't give enough space
 
-            OnPreUpdate();
+            var addSpatialHashingJob = new AddSpatialHashingJob { ComponentTTypeHandle = GetComponentTypeHandle<T>(), SpatialHash = _spatialHash.ToConcurrent() };
 
-            Dependency = new AddSpatialHashingJob { SpatialHash      = _spatialHash.ToConcurrent() }.Schedule(_addGroup, Dependency);
-            Dependency = new AddSpatialHashingEndJob { CommandBuffer = CommandBuffer.AsParallelWriter() }.Schedule(_addGroup, Dependency);
+            Dependency = addSpatialHashingJob.Schedule(_addGroup, Dependency);
 
-            var updateRemoveJob = new UpdateSpatialHashingRemoveFastJob();
-            updateRemoveJob.SetSpatialHash(ref _spatialHash);
-            Dependency = updateRemoveJob.ScheduleSingle(_updateGroup, Dependency);
-            Dependency = new UpdateSpatialHashingAddFastJob { SpatialHash = _spatialHash.ToConcurrent() }.Schedule(_updateGroup, Dependency);
+            var addSpatialHashingEndJob = new AddSpatialHashingEndJob
+            {
+                ComponentTTypeHandle = GetComponentTypeHandle<T>(true), EntityTypeHandle = GetEntityTypeHandle(), CommandBuffer = CommandBuffer.AsParallelWriter()
+            };
+
+            Dependency = addSpatialHashingEndJob.ScheduleParallel(_addGroup, Dependency);
+
+            var updateRemoveJob = new UpdateSpatialHashingRemoveFastJob { ComponentTTypeHandle = GetComponentTypeHandle<T>(true), SpatialHash = _spatialHash };
+            Dependency = updateRemoveJob.Schedule(_updateGroup, Dependency);
+
+            var updateSpatialHashingAddFastJob = new UpdateSpatialHashingAddFastJob { ComponentTTypeHandle = GetComponentTypeHandle<T>(true), SpatialHash = _spatialHash.ToConcurrent() };
+            Dependency = updateSpatialHashingAddFastJob.Schedule(_updateGroup, Dependency);
 
             if (RemoveUpdateComponent)
-                CommandBuffer.RemoveComponent(_updateGroup, typeof(TZ)); //Remove all component from query
+                CommandBuffer.RemoveComponentForEntityQuery(_updateGroup, typeof(TZ)); //Remove all component from query
 
-            var removeJob = new RemoveSpatialHashingJob();
-            removeJob.SetSpatialHash(ref _spatialHash);
-            Dependency = removeJob.ScheduleSingle(_removeGroup, Dependency);
+            var removeSpatialHashingJob = new RemoveSpatialHashingJob { ComponentMirrorTypeHandle = GetComponentTypeHandle<TY>(), SpatialHash = _spatialHash };
+            Dependency = removeSpatialHashingJob.Schedule(_removeGroup, Dependency);
 
-            CommandBuffer.RemoveComponent(_removeGroup, typeof(TY)); //Remove all component from query
+            CommandBuffer.RemoveComponentForEntityQuery(_removeGroup, typeof(TY)); //Remove all component from query
 
             OnPostUpdate();
 
@@ -103,113 +109,101 @@ namespace HMH.ECS.SpatialHashing
         #region Job
 
         [BurstCompile]
-        public struct AddSpatialHashingJob : IJobForEachWithEntity<T>
+        public struct AddSpatialHashingJob : IJobEntityBatch
         {
-            #region Implementation of IJobProcessComponentDataWithEntity<T>
-
-            /// <inheritdoc />
-            public void Execute(Entity entity, int index, ref T item)
-            {
-                SpatialHash.TryAdd(ref item);
-            }
-
-            #endregion
-
-            #region Variables
-
+            public ComponentTypeHandle<T>    ComponentTTypeHandle;
             public SpatialHash<T>.Concurrent SpatialHash;
 
-            #endregion
+            public void Execute(ArchetypeChunk batchInChunk, int batchIndex)
+            {
+                NativeArray<T> itemArray = batchInChunk.GetNativeArray(ComponentTTypeHandle);
+
+                for (int i = 0; i < batchInChunk.Count; i++)
+                {
+                    T item = itemArray[i];
+                    SpatialHash.TryAdd(ref item);
+                    itemArray[i] = item;
+                }
+            }
         }
 
-        internal struct AddSpatialHashingEndJob : IJobForEachWithEntity<T>
+        [BurstCompile]
+        public struct AddSpatialHashingEndJob : IJobEntityBatch
         {
-            #region Implementation of IJobProcessComponentDataWithEntity<T>
-
-            /// <inheritdoc />
-            public void Execute(Entity entity, int index, ref T item)
-            {
-                var mirror = new TY { GetItemID = item.SpatialHashingIndex };
-                CommandBuffer.AddComponent(index, entity, mirror);
-            }
-
-            #endregion
-
-            #region Variables
-
+            [ReadOnly]
+            public ComponentTypeHandle<T> ComponentTTypeHandle;
+            [ReadOnly]
+            public EntityTypeHandle EntityTypeHandle;
             public EntityCommandBuffer.ParallelWriter CommandBuffer;
 
-            #endregion
+            /// <inheritdoc />
+            public void Execute(ArchetypeChunk batchInChunk, int batchIndex)
+            {
+                NativeArray<T>      itemArray   = batchInChunk.GetNativeArray(ComponentTTypeHandle);
+                NativeArray<Entity> entityArray = batchInChunk.GetNativeArray(EntityTypeHandle);
+
+                for (int i = 0; i < batchInChunk.Count; i++)
+                {
+                    T   item   = itemArray[i];
+                    var mirror = new TY { GetItemID = item.SpatialHashingIndex };
+                    CommandBuffer.AddComponent(batchIndex, entityArray[i], mirror);
+                }
+            }
         }
 
         [BurstCompile]
-        public struct RemoveSpatialHashingJob : IJobForEachWithEntity<TY>
+        public struct RemoveSpatialHashingJob : IJobEntityBatch
         {
-            #region Implementation of IJobProcessComponentDataWithEntity<T>
+            [ReadOnly]
+            public ComponentTypeHandle<TY> ComponentMirrorTypeHandle;
+            public SpatialHash<T> SpatialHash;
 
-            /// <inheritdoc />
-            public void Execute(Entity entity, int index, [ReadOnly] ref TY mirror)
+            public void Execute(ArchetypeChunk batchInChunk, int batchIndex)
             {
-                _spatialHash.Remove(mirror.GetItemID);
+                NativeArray<TY> mirrorArray = batchInChunk.GetNativeArray(ComponentMirrorTypeHandle);
+
+                for (int i = 0; i < batchInChunk.Count; i++)
+                {
+                    SpatialHash.Remove(mirrorArray[i].GetItemID);
+                }
             }
-
-            #endregion
-
-            public void SetSpatialHash(ref SpatialHash<T> spatialHash)
-            {
-                _spatialHash = spatialHash;
-            }
-
-            #region Variables
-
-            private SpatialHash<T> _spatialHash;
-
-            #endregion
         }
 
         [BurstCompile]
-        public struct UpdateSpatialHashingRemoveFastJob : IJobForEach<T>
+        public struct UpdateSpatialHashingRemoveFastJob : IJobEntityBatch
         {
-            #region Implementation of IJobProcessComponentData<T>
+            [ReadOnly]
+            public ComponentTypeHandle<T> ComponentTTypeHandle;
+            public SpatialHash<T> SpatialHash;
 
-            /// <inheritdoc />
-            public void Execute([ReadOnly] ref T item)
+            public void Execute(ArchetypeChunk batchInChunk, int batchIndex)
             {
-                _spatialHash.Remove(item.SpatialHashingIndex);
+                NativeArray<T> itemArray = batchInChunk.GetNativeArray(ComponentTTypeHandle);
+
+                for (int i = 0; i < batchInChunk.Count; i++)
+                {
+                    SpatialHash.Remove(itemArray[i].SpatialHashingIndex);
+                }
             }
-
-            #endregion
-
-            public void SetSpatialHash(ref SpatialHash<T> spatialHash)
-            {
-                _spatialHash = spatialHash;
-            }
-
-            #region Variables
-
-            private SpatialHash<T> _spatialHash;
-
-            #endregion
         }
 
         [BurstCompile]
-        public struct UpdateSpatialHashingAddFastJob : IJobForEach<T>
+        public struct UpdateSpatialHashingAddFastJob : IJobEntityBatch
         {
-            #region Implementation of IJobProcessComponentData<T>
-
-            /// <inheritdoc />
-            public void Execute([ReadOnly] ref T item)
-            {
-                SpatialHash.AddFast(ref item);
-            }
-
-            #endregion
-
-            #region Variables
-
+            [ReadOnly]
+            public ComponentTypeHandle<T> ComponentTTypeHandle;
             public SpatialHash<T>.Concurrent SpatialHash;
 
-            #endregion
+            public void Execute(ArchetypeChunk batchInChunk, int batchIndex)
+            {
+                NativeArray<T> itemArray = batchInChunk.GetNativeArray(ComponentTTypeHandle);
+
+                for (int i = 0; i < batchInChunk.Count; i++)
+                {
+                    T item = itemArray[i];
+                    SpatialHash.AddFast(in item);
+                }
+            }
         }
 
         #endregion
@@ -235,5 +229,10 @@ namespace HMH.ECS.SpatialHashing
     public interface ISpatialHashingItemMiror : ISystemStateComponentData
     {
         int GetItemID { get; set; }
+    }
+
+    public struct SpatialHashingMirror : ISpatialHashingItemMiror
+    {
+        public int GetItemID { get; set; }
     }
 }

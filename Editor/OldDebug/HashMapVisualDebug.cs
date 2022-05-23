@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using HMH.ECS.SpatialHashing.Debug;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -43,7 +44,7 @@ namespace HMH.ECS.SpatialHashing.Debug
         }
 
         [BurstCompile]
-        private struct MoveItemTestJob : IJob
+        public struct MoveItemTestJob : IJob
         {
             #region Implementation of IJob
 
@@ -61,29 +62,22 @@ namespace HMH.ECS.SpatialHashing.Debug
         }
 
         [BurstCompile]
-        private struct AddItemTestJob : IJobParallelFor
+        public struct AddItemTestJob : IJobParallelFor
         {
-            #region Implementation of IJob
-
-            /// <inheritdoc />
             public void Execute(int index)
             {
                 var item = ItemList[index];
                     SpatialHash.TryAdd(ref item);
                     ItemList[index] = item;
             }
+            
             [NativeDisableParallelForRestriction]
             public NativeList<ItemTest>  ItemList;
             public SpatialHash<ItemTest>.Concurrent SpatialHash;
-
-            #endregion
         }
         [BurstCompile]
-        private struct RemoveItemTestJob : IJob
+        public struct RemoveItemTestJob : IJob
         {
-            #region Implementation of IJob
-
-            /// <inheritdoc />
             public void Execute()
             {
                 for (int i = 0; i < ItemList.Length; i++)
@@ -92,8 +86,6 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             public NativeList<ItemTest>  ItemList;
             public SpatialHash<ItemTest> SpatialHash;
-
-            #endregion
         }
 
         private void FixedUpdate()

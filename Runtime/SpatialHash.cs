@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace HMH.ECS.SpatialHashing
     /// Spatial hashing logic. Have to be assign by ref !
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public unsafe struct SpatialHash<T> : IDisposable, IRay where T : struct, ISpatialHashingItem<T>
+    public unsafe struct SpatialHash<T> : IDisposable, IRay where T : unmanaged, ISpatialHashingItem<T>
     {
         public SpatialHash(Bounds worldBounds, float3 cellSize, Allocator label)
             : this(worldBounds, cellSize, worldBounds.GetCellCount(cellSize).Mul() * 3, label)
@@ -40,8 +41,8 @@ namespace HMH.ECS.SpatialHashing
             _buckets            = new NativeMultiHashMap<uint, int>(startSize, label);
             _itemIDToBounds     = new NativeHashMap<int, Bounds>(startSize >> 1, label);
             _itemIDToItem       = new NativeHashMap<int, T>(startSize >> 1, label);
-            _helpMoveHashMapOld = new NativeHashMap<int3, byte>(128, _allocatorLabel);
-            _helpMoveHashMapNew = new NativeHashMap<int3, byte>(128, _allocatorLabel);
+            _helpMoveHashMapOld = new NativeHashSet<int3>(128, _allocatorLabel);
+            _helpMoveHashMapNew = new NativeHashSet<int3>(128, _allocatorLabel);
 
             _voxelRay    = new VoxelRay<SpatialHash<T>>();
             _rayHitValue = 0;
@@ -240,20 +241,16 @@ namespace HMH.ECS.SpatialHashing
             _helpMoveHashMapNew.Clear();
             SetVoxelIndexForBounds(_data, newBounds, _helpMoveHashMapNew);
 
-            var oldVoxel = _helpMoveHashMapOld.GetKeyArray(Allocator.Temp);
-
-            for (int i = 0; i < oldVoxel.Length; i++)
+            foreach (var oldVoxelPosition in _helpMoveHashMapOld)
             {
-                if (_helpMoveHashMapNew.TryGetValue(oldVoxel[i], out _) == false)
-                    RemoveInternal(oldVoxel[i], itemID);
+                if (_helpMoveHashMapNew.Contains(oldVoxelPosition) == false)
+                    RemoveInternal(oldVoxelPosition, itemID);
             }
 
-            var newVoxel = _helpMoveHashMapNew.GetKeyArray(Allocator.Temp);
-
-            for (int i = 0; i < newVoxel.Length; i++)
+            foreach (var newVoxelPosition in _helpMoveHashMapOld)
             {
-                if (_helpMoveHashMapOld.TryGetValue(newVoxel[i], out _) == false)
-                    AddInternal(newVoxel[i], itemID);
+                if (_helpMoveHashMapOld.Contains(newVoxelPosition) == false)
+                    AddInternal(newVoxelPosition, itemID);
             }
         }
 
@@ -274,7 +271,7 @@ namespace HMH.ECS.SpatialHashing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void SetVoxelIndexForBounds<TY>(SpatialHashData* data, Bounds bounds, NativeHashMap<int3, TY> collection) where TY : struct
+        private static void SetVoxelIndexForBounds(SpatialHashData* data, Bounds bounds, NativeHashSet<int3> collection)
         {
             CalculStartEndIterationInternal(data, bounds, out var start, out var end);
 
@@ -291,7 +288,17 @@ namespace HMH.ECS.SpatialHashing
                     for (int z = start.z; z < end.z; ++z)
                     {
                         position.z = z;
-                        collection.TryAdd(position, default(TY));
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                        bool success = collection.Add(position);
+
+                        if (success == false)
+                        {
+                            throw new Exception("Try to add a position already in bound collection");
+                        }
+#else
+                        collection.Add(position);
+#endif
                     }
                 }
             }
@@ -731,10 +738,10 @@ namespace HMH.ECS.SpatialHashing
         private NativeHashMap<int, Bounds>    _itemIDToBounds; //4
         private NativeHashMap<int, T>         _itemIDToItem;   //4
 
-        private NativeHashMap<int3, byte> _helpMoveHashMapOld;
-        private NativeHashMap<int3, byte> _helpMoveHashMapNew;
-        private VoxelRay<SpatialHash<T>>  _voxelRay;
-        private int                       _rayHitValue;
+        private NativeHashSet<int3>      _helpMoveHashMapOld;
+        private NativeHashSet<int3>      _helpMoveHashMapNew;
+        private VoxelRay<SpatialHash<T>> _voxelRay;
+        private int                      _rayHitValue;
 
         #endregion
 
@@ -855,7 +862,7 @@ namespace HMH.ECS.SpatialHashing
             /// </summary>
             /// <param name="item"></param>
             /// <returns></returns>
-            public void AddFast(ref T item)
+            public void AddFast(in T item)
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(_safety);
@@ -934,7 +941,10 @@ namespace HMH.ECS.SpatialHashing
 
     public interface ISpatialHashingItem<T> : IEquatable<T>
     {
+        [Pure]
         float3 GetCenter();
+
+        [Pure]
         float3 GetSize();
 
         int SpatialHashingIndex { get; set; }

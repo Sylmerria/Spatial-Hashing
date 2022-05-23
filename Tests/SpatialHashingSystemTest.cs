@@ -1,8 +1,16 @@
-﻿using NUnit.Framework;
+﻿using HMH.ECS.SpatialHashing;
+using HMH.ECS.SpatialHashing.Test;
+using NUnit.Framework;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+
+[assembly: RegisterGenericJobType(typeof(SpatialHashingSystemTest.SystemTest.AddSpatialHashingJob))]
+[assembly: RegisterGenericJobType(typeof(SpatialHashingSystemTest.SystemTest.AddSpatialHashingEndJob))]
+[assembly: RegisterGenericJobType(typeof(SpatialHashingSystemTest.SystemTest.UpdateSpatialHashingRemoveFastJob))]
+[assembly: RegisterGenericJobType(typeof(SpatialHashingSystemTest.SystemTest.UpdateSpatialHashingAddFastJob))]
+[assembly: RegisterGenericJobType(typeof(SpatialHashingSystemTest.SystemTest.RemoveSpatialHashingJob))]
 
 namespace HMH.ECS.SpatialHashing.Test
 {
@@ -15,17 +23,15 @@ namespace HMH.ECS.SpatialHashing.Test
             var item = new Item { Center = new float3(50.5F), Size = new float3(1.1F) };
             EntityManager.AddComponentData(e, item);
 
-            EntityCommandBufferSystem barrier = World.CreateSystem<BeginInitializationEntityCommandBufferSystem>();
-            var                       system  = World.CreateSystem<SystemTest>();
-            system.Barrier = barrier;
+            var system = World.CreateSystem<SystemTest>();
 
             system.Update();
             EntityManager.CompleteAllJobs();
-            barrier.Update();
+            system.Barrier.Update();
             EntityManager.CompleteAllJobs();
 
-            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
-            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(SpatialHashingMirror))));
+            Assert.AreEqual(1, EntityManager.GetComponentData<SpatialHashingMirror>(e).GetItemID);
 
             var sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -73,17 +79,15 @@ namespace HMH.ECS.SpatialHashing.Test
             var item = new Item { Center = new float3(50.5F), Size = new float3(1.1F) };
             EntityManager.AddComponentData(e, item);
 
-            EntityCommandBufferSystem barrier = World.CreateSystem<BeginInitializationEntityCommandBufferSystem>();
-            var                       system  = World.CreateSystem<SystemTest>();
-            system.Barrier = barrier;
+            var system = World.CreateSystem<SystemTest>();
 
             system.Update();
             EntityManager.CompleteAllJobs();
-            barrier.Update();
+            system.Barrier.Update();
             EntityManager.CompleteAllJobs();
 
-            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
-            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(SpatialHashingMirror))));
+            Assert.AreEqual(1, EntityManager.GetComponentData<SpatialHashingMirror>(e).GetItemID);
 
             var sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -127,10 +131,10 @@ namespace HMH.ECS.SpatialHashing.Test
 
             system.Update();
             EntityManager.CompleteAllJobs();
-            barrier.Update();
+            system.Barrier.Update();
             EntityManager.CompleteAllJobs();
 
-            Assert.IsFalse(EntityManager.HasComponent<ItemMirror>(e));
+            Assert.IsFalse(EntityManager.HasComponent<SpatialHashingMirror>(e));
 
             sh = system.SpatialHash;
             Assert.AreEqual(0, sh.ItemCount);
@@ -146,17 +150,15 @@ namespace HMH.ECS.SpatialHashing.Test
             var item = new Item { Center = new float3(50.5F), Size = new float3(1.1F) };
             EntityManager.AddComponentData(e, item);
 
-            EntityCommandBufferSystem barrier = World.CreateSystem<BeginInitializationEntityCommandBufferSystem>();
-            var                       system  = World.CreateSystem<SystemTest>();
-            system.Barrier = barrier;
+            var system = World.CreateSystem<SystemTest>();
 
             system.Update();
             EntityManager.CompleteAllJobs();
-            barrier.Update();
+            system.Barrier.Update();
             EntityManager.CompleteAllJobs();
 
-            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(ItemMirror))));
-            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.IsTrue(EntityManager.HasComponent(e, ComponentType.ReadOnly(typeof(SpatialHashingMirror))));
+            Assert.AreEqual(1, EntityManager.GetComponentData<SpatialHashingMirror>(e).GetItemID);
 
             var sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -203,13 +205,13 @@ namespace HMH.ECS.SpatialHashing.Test
 
             system.Update();
             EntityManager.CompleteAllJobs();
-            barrier.Update();
+            system.Barrier.Update();
             EntityManager.CompleteAllJobs();
             system.Barrier.Update();
 
-            Assert.IsTrue(EntityManager.HasComponent(e, typeof(ItemMirror)));
+            Assert.IsTrue(EntityManager.HasComponent(e, typeof(SpatialHashingMirror)));
             Assert.IsFalse(EntityManager.HasComponent(e, typeof(EmptyData)));
-            Assert.AreEqual(1, EntityManager.GetComponentData<ItemMirror>(e).GetItemID);
+            Assert.AreEqual(1, EntityManager.GetComponentData<SpatialHashingMirror>(e).GetItemID);
 
             sh = system.SpatialHash;
             Assert.AreEqual(1, sh.ItemCount);
@@ -249,7 +251,7 @@ namespace HMH.ECS.SpatialHashing.Test
         }
 
         [DisableAutoCreation]
-        private class SystemTest : SpatialHashingSystem<Item, ItemMirror, EmptyData>
+        public class SystemTest : SpatialHashingSystem<Item, SpatialHashingMirror, EmptyData>
         {
             #region Overrides of SpatialHashingSystem<Item,ItemMirror>
 
@@ -259,9 +261,22 @@ namespace HMH.ECS.SpatialHashing.Test
                 _spatialHash = new SpatialHash<Item>(new Bounds(new float3(50), new float3(20)), new float3(1), Allocator.Persistent);
             }
 
+            #region Overrides of SpatialHashingSystem<Item,ItemMirror,EmptyData>
+
+            /// <inheritdoc />
+            protected override void OnCreate()
+            {
+                Barrier = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+                base.OnCreate();
+            }
+
+            #endregion
+
             /// <inheritdoc />
             protected override void AddJobHandleForProducer(JobHandle inputDeps)
-            { }
+            {
+                Barrier.AddJobHandleForProducer(inputDeps);
+            }
 
             /// <inheritdoc />
             protected override EntityCommandBuffer CommandBuffer => Barrier.CreateCommandBuffer();
@@ -277,16 +292,6 @@ namespace HMH.ECS.SpatialHashing.Test
             #region Properties
 
             public SpatialHash<Item> SpatialHash => _spatialHash;
-
-            #endregion
-        }
-
-        public struct ItemMirror : ISpatialHashingItemMiror
-        {
-            #region Implementation of ISpatialHashingItemMiror
-
-            /// <inheritdoc />
-            public int GetItemID { get; set; }
 
             #endregion
         }
