@@ -19,7 +19,7 @@ Source : https://www.researchgate.net/figure/Spatial-hashing-where-objects-are-m
 ##Manually
 1. Implement ISpatialHashingItem on a struct
 2. Allocate a SpatialHash of this struct
-3. Use it ( can be store on IComponentData)
+3. Use it
 
 ##Automatically
 1. Implement ISpatialHashingItem on a IComponentData struct
