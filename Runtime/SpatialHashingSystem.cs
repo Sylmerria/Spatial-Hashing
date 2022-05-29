@@ -68,6 +68,8 @@ namespace HMH.ECS.SpatialHashing
             //NativeHashmap can't resize when they are in concurent mode so prepare free place before
             _spatialHash.PrepareFreePlace((int)(_addGroup.CalculateEntityCount() * 1.5F)); //strangely resize just for the good length doesn't give enough space
 
+            OnPreUpdate();
+
             var addSpatialHashingJob = new AddSpatialHashingJob { ComponentTTypeHandle = GetComponentTypeHandle<T>(), SpatialHash = _spatialHash.ToConcurrent() };
 
             Dependency = addSpatialHashingJob.Schedule(_addGroup, Dependency);
