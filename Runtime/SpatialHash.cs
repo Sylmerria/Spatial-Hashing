@@ -24,7 +24,7 @@ namespace HMH.ECS.SpatialHashing
         public SpatialHash(Bounds worldBounds, float3 cellSize, int startSize, Allocator label)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            DisposeSentinel.Create(out _safety, out _disposeSentinel, 0, label);
+            DisposeSentinel.Create(out m_Safety, out m_DisposeSentinel, 0, label);
 #endif
             _allocatorLabel         = label;
             _data                   = (SpatialHashData*)UnsafeUtility.Malloc(sizeof(SpatialHashData), UnsafeUtility.AlignOf<SpatialHashData>(), label);
@@ -52,7 +52,7 @@ namespace HMH.ECS.SpatialHashing
         public void Dispose()
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            DisposeSentinel.Dispose(ref _safety, ref _disposeSentinel);
+            DisposeSentinel.Dispose(ref m_Safety, ref m_DisposeSentinel);
 #endif
             UnsafeUtility.Free(_data, _allocatorLabel);
 
@@ -68,7 +68,7 @@ namespace HMH.ECS.SpatialHashing
         public void Add(ref T item)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
 
             var bounds = new Bounds(item.GetCenter(), item.GetSize());
@@ -106,7 +106,7 @@ namespace HMH.ECS.SpatialHashing
         public void AddFast(ref T item)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
 
             var itemID = item.SpatialHashingIndex;
@@ -148,7 +148,7 @@ namespace HMH.ECS.SpatialHashing
         public void Remove(int itemID)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
             var success = _itemIDToBounds.TryGetValue(itemID, out var bounds);
 
@@ -186,7 +186,7 @@ namespace HMH.ECS.SpatialHashing
         public void RemoveFast(int itemID)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
             var success = _itemIDToBounds.TryGetValue(itemID, out var bounds);
 
@@ -223,7 +223,7 @@ namespace HMH.ECS.SpatialHashing
         public void Move(T item)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
             var itemID  = item.SpatialHashingIndex;
             var success = _itemIDToBounds.TryGetValue(itemID, out var oldBounds);
@@ -257,7 +257,7 @@ namespace HMH.ECS.SpatialHashing
         public void Resize(T item)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
 
             Move(item);
@@ -319,7 +319,7 @@ namespace HMH.ECS.SpatialHashing
         public T GetObject(int index)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
             if (_itemIDToItem.TryGetValue(index, out var value))
@@ -349,7 +349,7 @@ namespace HMH.ECS.SpatialHashing
         public void Query(int3 chunkIndex, NativeList<T> resultList)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
             var hashMapUnic = new NativeHashMap<int, byte>(64, Allocator.Temp);
@@ -372,7 +372,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(resultList.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
             bounds.Clamp(_data -> WorldBounds);
 
@@ -411,7 +411,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(voxelIndexes.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
             bounds.Clamp(_data -> WorldBounds);
 
@@ -442,7 +442,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(resultList.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
             var bounds = TransformBounds(obbBounds, rotation);
@@ -496,7 +496,7 @@ namespace HMH.ECS.SpatialHashing
             Assert.IsTrue(voxelIndexes.IsCreated);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
             var bounds = TransformBounds(obbBounds, rotation);
@@ -564,7 +564,7 @@ namespace HMH.ECS.SpatialHashing
         public bool RayCast(Ray ray, ref T item, float length = 99999F)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
             _data -> HasHit = false;
@@ -610,7 +610,7 @@ namespace HMH.ECS.SpatialHashing
         private int GetCellCountFromSize(float3 size)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
             var deltaSize = size / _data -> CellSize;
@@ -621,7 +621,7 @@ namespace HMH.ECS.SpatialHashing
         public float3 GetPositionVoxel(int3 index, bool center)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
             var pos = index * _data -> CellSize + _data -> WorldBoundsMin;
 
@@ -634,7 +634,7 @@ namespace HMH.ECS.SpatialHashing
         public int3 GetIndexVoxel(float3 position)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
             position -= _data -> WorldBoundsMin;
 
@@ -676,7 +676,7 @@ namespace HMH.ECS.SpatialHashing
         public void GetIndexiesVoxel(T item, NativeList<int3> results)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            AtomicSafetyHandle.CheckReadAndThrow(_safety);
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
             var bounds = new Bounds(item.GetCenter(), item.GetSize());
 
@@ -711,10 +711,13 @@ namespace HMH.ECS.SpatialHashing
             return new Concurrent
             {
                 _data           = _data,
-                _safety         = _safety,
                 _itemIDToBounds = _itemIDToBounds.AsParallelWriter(),
                 _itemIDToItem   = _itemIDToItem.AsParallelWriter(),
-                _buckets        = _buckets.AsParallelWriter()
+                _buckets        = _buckets.AsParallelWriter(),
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+                m_Safety = m_Safety
+#endif
             };
         }
 
@@ -725,9 +728,9 @@ namespace HMH.ECS.SpatialHashing
         private static float3 _right   = new float3(1F, 0F, 0F);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-        private AtomicSafetyHandle _safety;
+        private AtomicSafetyHandle m_Safety;
         [NativeSetClassTypeToNullOnSchedule]
-        private DisposeSentinel _disposeSentinel;
+        private DisposeSentinel m_DisposeSentinel;
 #endif
 
         private Allocator _allocatorLabel;
@@ -754,7 +757,7 @@ namespace HMH.ECS.SpatialHashing
             get
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckReadAndThrow(_safety);
+                AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
                 return _itemIDToBounds.Count();
             }
@@ -765,7 +768,7 @@ namespace HMH.ECS.SpatialHashing
             get
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckReadAndThrow(_safety);
+                AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
                 return _buckets.Count();
             }
@@ -776,7 +779,7 @@ namespace HMH.ECS.SpatialHashing
             get
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckReadAndThrow(_safety);
+                AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
                 return _data -> CellSize;
             }
@@ -787,7 +790,7 @@ namespace HMH.ECS.SpatialHashing
             get
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckReadAndThrow(_safety);
+                AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
                 return _data -> WorldBounds;
             }
@@ -798,7 +801,7 @@ namespace HMH.ECS.SpatialHashing
             get
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckReadAndThrow(_safety);
+                AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
                 return _data -> CellCount;
             }
@@ -818,7 +821,7 @@ namespace HMH.ECS.SpatialHashing
             public bool TryAdd(ref T item)
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+                AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
 
                 var bounds = new Bounds(item.GetCenter(), item.GetSize());
@@ -865,7 +868,7 @@ namespace HMH.ECS.SpatialHashing
             public void AddFast(in T item)
             {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-                AtomicSafetyHandle.CheckWriteAndThrow(_safety);
+                AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
 
                 var itemID = item.SpatialHashingIndex;
@@ -910,7 +913,7 @@ namespace HMH.ECS.SpatialHashing
             internal NativeHashMap<int, T>.ParallelWriter         _itemIDToItem;   //4
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            internal AtomicSafetyHandle _safety;
+            internal AtomicSafetyHandle m_Safety;
 #endif
 
             [NativeSetThreadIndex]
