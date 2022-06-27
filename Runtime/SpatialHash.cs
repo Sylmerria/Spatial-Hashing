@@ -38,11 +38,11 @@ namespace HMH.ECS.SpatialHashing
             _data -> RayOrigin      = float3.zero;
             _data -> RayDirection   = float3.zero;
 
-            _buckets            = new NativeMultiHashMap<uint, int>(startSize, label);
-            _itemIDToBounds     = new NativeHashMap<int, Bounds>(startSize >> 1, label);
-            _itemIDToItem       = new NativeHashMap<int, T>(startSize >> 1, label);
-            _helpMoveHashMapOld = new NativeHashSet<int3>(128, _allocatorLabel);
-            _helpMoveHashMapNew = new NativeHashSet<int3>(128, _allocatorLabel);
+            _buckets            = new NativeParallelMultiHashMap<uint, int>(startSize, label);
+            _itemIDToBounds     = new NativeParallelHashMap<int, Bounds>(startSize >> 1, label);
+            _itemIDToItem       = new NativeParallelHashMap<int, T>(startSize >> 1, label);
+            _helpMoveHashMapOld = new NativeParallelHashSet<int3>(128, _allocatorLabel);
+            _helpMoveHashMapNew = new NativeParallelHashSet<int3>(128, _allocatorLabel);
 
             _voxelRay    = new VoxelRay<SpatialHash<T>>();
             _rayHitValue = 0;
@@ -271,7 +271,7 @@ namespace HMH.ECS.SpatialHashing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void SetVoxelIndexForBounds(SpatialHashData* data, Bounds bounds, NativeHashSet<int3> collection)
+        private static void SetVoxelIndexForBounds(SpatialHashData* data, Bounds bounds, NativeParallelHashSet<int3> collection)
         {
             CalculStartEndIterationInternal(data, bounds, out var start, out var end);
 
@@ -352,7 +352,7 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
-            var hashMapUnic = new NativeHashMap<int, byte>(64, Allocator.Temp);
+            var hashMapUnic = new NativeParallelHashMap<int, byte>(64, Allocator.Temp);
             var hash        = Hash(chunkIndex);
 
             if (_buckets.TryGetFirstValue(hash, out var item, out var it) == false)
@@ -378,7 +378,7 @@ namespace HMH.ECS.SpatialHashing
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
-            var hashMapUnic  = new NativeHashMap<int, byte>(64, Allocator.Temp);
+            var hashMapUnic  = new NativeParallelHashMap<int, byte>(64, Allocator.Temp);
             var hashPosition = new int3(0F);
 
             for (int x = start.x; x < end.x; ++x)
@@ -450,7 +450,7 @@ namespace HMH.ECS.SpatialHashing
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
-            var hashMapUnic = new NativeHashMap<int, byte>(64, Allocator.Temp);
+            var hashMapUnic = new NativeParallelHashMap<int, byte>(64, Allocator.Temp);
 
             var hashPosition = new int3(0F);
 
@@ -546,7 +546,7 @@ namespace HMH.ECS.SpatialHashing
             return b;
         }
 
-        private void ExtractValueFromHashMap(NativeHashMap<int, byte> hashMapUnic, Bounds bounds, NativeList<T> resultList)
+        private void ExtractValueFromHashMap(NativeParallelHashMap<int, byte> hashMapUnic, Bounds bounds, NativeList<T> resultList)
         {
             var datas = hashMapUnic.GetKeyArray(Allocator.Temp);
 
@@ -737,12 +737,12 @@ namespace HMH.ECS.SpatialHashing
 
         [NativeDisableUnsafePtrRestriction]
         private SpatialHashData* _data;
-        private NativeMultiHashMap<uint, int> _buckets;        //4
-        private NativeHashMap<int, Bounds>    _itemIDToBounds; //4
-        private NativeHashMap<int, T>         _itemIDToItem;   //4
+        private NativeParallelMultiHashMap<uint, int> _buckets;        //4
+        private NativeParallelHashMap<int, Bounds>    _itemIDToBounds; //4
+        private NativeParallelHashMap<int, T>         _itemIDToItem;   //4
 
-        private NativeHashSet<int3>      _helpMoveHashMapOld;
-        private NativeHashSet<int3>      _helpMoveHashMapNew;
+        private NativeParallelHashSet<int3>      _helpMoveHashMapOld;
+        private NativeParallelHashSet<int3>      _helpMoveHashMapNew;
         private VoxelRay<SpatialHash<T>> _voxelRay;
         private int                      _rayHitValue;
 
@@ -808,8 +808,8 @@ namespace HMH.ECS.SpatialHashing
         }
 
 #if UNITY_EDITOR
-        public NativeMultiHashMap<uint, int> DebugBuckets => _buckets;
-        public NativeHashMap<int, T> DebugIDToItem => _itemIDToItem;
+        public NativeParallelMultiHashMap<uint, int> DebugBuckets => _buckets;
+        public NativeParallelHashMap<int, T> DebugIDToItem => _itemIDToItem;
         public Bounds DebugRayCastBounds => _data -> RayCastBound;
         public VoxelRay<SpatialHash<T>> DebugVoxelRay => _voxelRay;
 #endif
@@ -908,9 +908,9 @@ namespace HMH.ECS.SpatialHashing
             [NativeDisableUnsafePtrRestriction]
             internal SpatialHashData* _data;
 
-            internal NativeMultiHashMap<uint, int>.ParallelWriter _buckets;        //4
-            internal NativeHashMap<int, Bounds>.ParallelWriter    _itemIDToBounds; //4
-            internal NativeHashMap<int, T>.ParallelWriter         _itemIDToItem;   //4
+            internal NativeParallelMultiHashMap<uint, int>.ParallelWriter _buckets;        //4
+            internal NativeParallelHashMap<int, Bounds>.ParallelWriter    _itemIDToBounds; //4
+            internal NativeParallelHashMap<int, T>.ParallelWriter         _itemIDToItem;   //4
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             internal AtomicSafetyHandle m_Safety;
