@@ -25,10 +25,10 @@ Source : https://www.researchgate.net/figure/Spatial-hashing-where-objects-are-m
 1. Implement ISpatialHashingItem on a IComponentData struct
 2. Implement a IComponentData struct to warn the system when an entity is dirty
 3. Implement a child class inheritant SpatialHashingSystem ( T is 1. component, TY will be HMH.ECS.SpatialHashing.SpatialHashingMirror (or similar), TZ will be 2. component
-4. Add that before the child class ( see un)
+4. Add that before the child class (See unit test to concrete example)
 >  [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.AddSpatialHashingJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.AddSpatialHashingEndJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.UpdateSpatialHashingRemoveFastJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.UpdateSpatialHashingAddFastJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.RemoveSpatialHashingJob))]  
-5. good to go (See unit test to concrete example)
+5. good to go 
