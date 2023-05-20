@@ -98,7 +98,7 @@ namespace HMH.ECS.SpatialHashing
          */
         private int ComputeVoxelDistance(ref T asker, float3 end, int3 startIndex)
         {
-            return 1 + math.abs(asker.GetIndexVoxel(end) - startIndex).Add();
+            return 1 + math.abs(asker.GetIndexVoxel(end) - startIndex).Sum();
         }
 
         /// <summary>

@@ -79,7 +79,7 @@ namespace HMH.ECS.SpatialHashing.Test
                 // holding on SharedComponentData making checks fail
                 while (World.Systems.Count > 0)
                 {
-                    World.DestroySystem(World.Systems[0]);
+                    World.DestroySystemManaged(World.Systems[0]);
                 }
 
                 EntityManagerDebug.CheckInternalConsistency();

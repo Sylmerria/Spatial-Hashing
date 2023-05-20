@@ -21,19 +21,22 @@ namespace HMH.ECS.SpatialHashing.Debug
             if (Application.isPlaying == false)
                 return;
 
-            var targetBounds = new Bounds(transform.position, _boundSize);
+            var currentPosition     = transform.position;
+            var targetBounds = new Bounds(currentPosition, _boundSize);
 
-            var bounds2 = SpatialHash<HashMapVisualDebug.ItemTest>.TransformBounds(targetBounds, transform.rotation);
+            var transformRotation = transform.rotation;
+            var bounds2           = SpatialHash<HashMapVisualDebug.ItemTest>.TransformBounds(in targetBounds, transformRotation);
             bounds2.Clamp(_spatialHashing.WorldBounds);
 
 
             //********************** ligne raycast
-            Ray r = new Ray(start.transform.position, end.transform.position - start.transform.position);
+            var startPosition = start.transform.position;
+            Ray r         = new Ray(startPosition, end.transform.position - startPosition);
 
-            var rr = new Ray(math.mul(math.inverse(transform.rotation), (start.transform.position - transform.position)) + (float3)transform.position,
-                             math.mul(math.inverse(transform.rotation), r.direction));
+            var rr = new Ray(math.mul(math.inverse(transformRotation), (startPosition - currentPosition)) + (float3)currentPosition,
+                             math.mul(math.inverse(transformRotation), r.direction));
 
-            if (targetBounds.RayCastOBB(r.origin, r.direction, transform.rotation, out var pp, math.length(end.transform.position - start.transform.position)))
+            if (targetBounds.RayCastOBB(r.origin, r.direction, transformRotation, out var pp, math.length(end.transform.position - start.transform.position)))
                 Gizmos.color = Color.yellow;
             else
                 Gizmos.color = Color.red;
@@ -43,7 +46,7 @@ namespace HMH.ECS.SpatialHashing.Debug
             //local recast
             Gizmos.color = Color.black;
 
-            var localRotation       = math.inverse(transform.rotation);
+            var localRotation       = math.inverse(transformRotation);
             var origin              = math.mul(localRotation, ((float3)r.origin - targetBounds.Center)) + targetBounds.Center;
             var directionNormalized = math.mul(localRotation, r.direction);
             Gizmos.DrawLine(origin, origin + directionNormalized * (math.length(start.transform.position - end.transform.position)));
@@ -57,14 +60,14 @@ namespace HMH.ECS.SpatialHashing.Debug
 
             //************ Debug
             var list = new NativeList<int3>(20, Allocator.Temp);
-            _spatialHashing.Query(targetBounds, transform.rotation, list);
+            _spatialHashing.Query(targetBounds, transformRotation, list);
 
 
 
 
             int3 cell = list[indexToDraw]; //new int3(9, 14, 16);
 
-            var bounds = SpatialHash<HashMapVisualDebug.ItemTest>.TransformBounds(targetBounds, transform.rotation);
+            var bounds = SpatialHash<HashMapVisualDebug.ItemTest>.TransformBounds(in targetBounds, transformRotation);
             bounds.Clamp(_spatialHashing.WorldBounds);
 
             targetBounds.Size += _spatialHashing.CellSize;
@@ -79,25 +82,25 @@ namespace HMH.ECS.SpatialHashing.Debug
             UnityEngine.Debug.Log("index " + list[indexToDraw]);
             Color c;
 
-            if (targetBounds.RayCastOBB(r0.origin, r0.direction, transform.rotation, out var px,_spatialHashing.CellSize.x))
+            if (targetBounds.RayCastOBB(r0.origin, r0.direction, transformRotation, out var px,_spatialHashing.CellSize.x))
             {
                 Gizmos.color = Color.cyan;
                 Gizmos.DrawCube(px, new Vector3(1F, 1F, 1F));
             }
 
-            if (targetBounds.RayCastOBB(r0Y.origin, r0Y.direction, transform.rotation, out var py,_spatialHashing.CellSize.y))
+            if (targetBounds.RayCastOBB(r0Y.origin, r0Y.direction, transformRotation, out var py,_spatialHashing.CellSize.y))
             {
                 Gizmos.color = Color.yellow;
                 Gizmos.DrawCube(py, new Vector3(1F, 1F, 1F));
             }
 
-            if (targetBounds.RayCastOBB(r0Z.origin, r0Z.direction, transform.rotation, out var pz,_spatialHashing.CellSize.z))
+            if (targetBounds.RayCastOBB(r0Z.origin, r0Z.direction, transformRotation, out var pz,_spatialHashing.CellSize.z))
             {
                 Gizmos.color = Color.black;
                 Gizmos.DrawCube(pz, new Vector3(1F, 1F, 1F));
             }
 
-            if (targetBounds.RayCastOBB(r0.origin, r0.direction, transform.rotation,_spatialHashing.CellSize.x) && targetBounds.RayCastOBB(r0Y.origin, r0Y.direction, transform.rotation,_spatialHashing.CellSize.y) && targetBounds.RayCastOBB(r0Z.origin, r0Z.direction, transform.rotation,_spatialHashing.CellSize.z))
+            if (targetBounds.RayCastOBB(r0.origin, r0.direction, transformRotation,_spatialHashing.CellSize.x) && targetBounds.RayCastOBB(r0Y.origin, r0Y.direction, transformRotation,_spatialHashing.CellSize.y) && targetBounds.RayCastOBB(r0Z.origin, r0Z.direction, transformRotation,_spatialHashing.CellSize.z))
                 c = new Color(0F, 1F, 0F, 0.3F);
             else
                 c = Gizmos.color = Color.red;

@@ -1,14 +1,14 @@
 # Spatial hashing for Unity using ECS 
 A spatial hash is one way of indexing objects in space.
-This package allows you to indexing struct manually or automatically ( via IComponentData) with high speed
+This package allows you to indexing struct manually or automatically (via IComponentData) with high speed
 
 ![Spatial hashing image](https://zupimages.net/up/22/21/uw0s.png)
 
 Source : https://www.researchgate.net/figure/Spatial-hashing-where-objects-are-mapped-into-uniformly-sized-cells_fig1_326306568
 
 # Requirement
-- Unity 2021.3.4
-- Package Entities 0.51
+- Unity 2022.2.20
+- Package Entities 1.0.8
 
 # How to add to your project
 - Open manifest.json at %RepertoryPath%/Packages
@@ -23,12 +23,13 @@ Source : https://www.researchgate.net/figure/Spatial-hashing-where-objects-are-m
 
 ##Automatically
 1. Implement ISpatialHashingItem on a IComponentData struct
-2. Implement a IComponentData struct to warn the system when an entity is dirty
-3. Implement a child class inheritant SpatialHashingSystem ( T is 1. component, TY will be HMH.ECS.SpatialHashing.SpatialHashingMirror (or similar), TZ will be 2. component
+2. Implement a IComponentData struct to warn the system when an entity is dirty, typically a flag or an enablable component
+3. Implement a child class inheritant SpatialHashingSystem (T is 1. component, TY will be HMH.ECS.SpatialHashing.SpatialHashingMirror (or similar), TZ will be 2. component
 4. Add that before the child class (See unit test to concrete example)
->  [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.AddSpatialHashingJob))]  
+>  [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.IncreaseSpatialHashSizeJob))]  
+   [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.AddSpatialHashingJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.AddSpatialHashingEndJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.UpdateSpatialHashingRemoveFastJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.UpdateSpatialHashingAddFastJob))]  
    [assembly: RegisterGenericJobType(typeof({CHILDCLASSTYPE}.RemoveSpatialHashingJob))]  
-5. good to go 
+5. good to go

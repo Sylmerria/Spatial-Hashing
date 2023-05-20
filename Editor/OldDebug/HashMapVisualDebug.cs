@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using HMH.ECS.SpatialHashing.Debug;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -90,7 +89,7 @@ namespace HMH.ECS.SpatialHashing.Debug
 
         private void FixedUpdate()
         {
-            World.DefaultGameObjectInjectionWorld.EntityManager.CompleteAllJobs();
+            World.DefaultGameObjectInjectionWorld.EntityManager.CompleteAllTrackedJobs();
 
             var itemList = new NativeList<ItemTest>(_spawnCount, Allocator.TempJob);
 

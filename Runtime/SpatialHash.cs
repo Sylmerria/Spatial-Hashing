@@ -21,13 +21,25 @@ namespace HMH.ECS.SpatialHashing
             : this(worldBounds, cellSize, worldBounds.GetCellCount(cellSize).Mul() * 3, label)
         { }
 
-        public SpatialHash(Bounds worldBounds, float3 cellSize, int startSize, Allocator label)
+        public SpatialHash(Bounds worldBounds, float3 cellSize, int initialSize, Allocator allocator)
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            DisposeSentinel.Create(out m_Safety, out m_DisposeSentinel, 0, label);
+            switch (allocator)
+            {
+                case <= Allocator.None:
+                    throw new ArgumentException("Allocator must be Temp, TempJob or Persistent", nameof (allocator));
+                case >= Allocator.FirstUserIndex:
+                    throw new ArgumentException("Allocator must be Temp, TempJob or Persistent", nameof (allocator));
+            }
+
+            if (initialSize < 1)
+                throw new ArgumentOutOfRangeException(nameof(initialSize), "InitialSize must be > 0");
+
+            DisposeSentinel.Create(out m_Safety, out m_DisposeSentinel, 0, allocator);
 #endif
-            _allocatorLabel         = label;
-            _data                   = (SpatialHashData*)UnsafeUtility.Malloc(sizeof(SpatialHashData), UnsafeUtility.AlignOf<SpatialHashData>(), label);
+
+            _allocatorLabel         = allocator;
+            _data                   = (SpatialHashData*)UnsafeUtility.MallocTracked(sizeof(SpatialHashData), UnsafeUtility.AlignOf<SpatialHashData>(), allocator, 0);
             _data -> WorldBounds    = worldBounds;
             _data -> WorldBoundsMin = worldBounds.Min;
             _data -> CellSize       = cellSize;
@@ -38,11 +50,11 @@ namespace HMH.ECS.SpatialHashing
             _data -> RayOrigin      = float3.zero;
             _data -> RayDirection   = float3.zero;
 
-            _buckets            = new NativeParallelMultiHashMap<uint, int>(startSize, label);
-            _itemIDToBounds     = new NativeParallelHashMap<int, Bounds>(startSize >> 1, label);
-            _itemIDToItem       = new NativeParallelHashMap<int, T>(startSize >> 1, label);
-            _helpMoveHashMapOld = new NativeParallelHashSet<int3>(128, _allocatorLabel);
-            _helpMoveHashMapNew = new NativeParallelHashSet<int3>(128, _allocatorLabel);
+            _buckets            = new NativeParallelMultiHashMap<uint, int>(initialSize, allocator);
+            _itemIDToBounds     = new NativeParallelHashMap<int, Bounds>(initialSize >> 1, allocator);
+            _itemIDToItem       = new NativeParallelHashMap<int, T>(initialSize >> 1, allocator);
+            _helpMoveHashMapOld = new NativeParallelHashSet<int3>(128, allocator);
+            _helpMoveHashMapNew = new NativeParallelHashSet<int3>(128, allocator);
 
             _voxelRay    = new VoxelRay<SpatialHash<T>>();
             _rayHitValue = 0;
@@ -54,7 +66,7 @@ namespace HMH.ECS.SpatialHashing
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             DisposeSentinel.Dispose(ref m_Safety, ref m_DisposeSentinel);
 #endif
-            UnsafeUtility.Free(_data, _allocatorLabel);
+            UnsafeUtility.FreeTracked(_data, _allocatorLabel);
 
             _buckets.Dispose();
             _itemIDToBounds.Dispose();
@@ -75,6 +87,7 @@ namespace HMH.ECS.SpatialHashing
 
             bounds.Clamp(_data -> WorldBounds);
 
+            // TODO Maintien free id to replace hashmap by array
             var itemID = ++_data -> Counter;
 
             item.SpatialHashingIndex = itemID;
@@ -359,9 +372,10 @@ namespace HMH.ECS.SpatialHashing
                 return;
 
             do
+            {
                 if (hashMapUnic.TryAdd(item, 0))
                     resultList.Add(_itemIDToItem[item]);
-            while (_buckets.TryGetNextValue(out item, ref it));
+            } while (_buckets.TryGetNextValue(out item, ref it));
         }
 
         /// <summary>
@@ -378,7 +392,7 @@ namespace HMH.ECS.SpatialHashing
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
-            var hashMapUnic  = new NativeParallelHashMap<int, byte>(64, Allocator.Temp);
+            var hashMapUnic  = new NativeHashSet<int>(64, Allocator.Temp);
             var hashPosition = new int3(0F);
 
             for (int x = start.x; x < end.x; ++x)
@@ -396,9 +410,11 @@ namespace HMH.ECS.SpatialHashing
                         var hash = Hash(hashPosition);
 
                         if (_buckets.TryGetFirstValue(hash, out var item, out var it))
+                        {
                             do
-                                hashMapUnic.TryAdd(item, 0);
+                                hashMapUnic.Add(item);
                             while (_buckets.TryGetNextValue(out item, ref it));
+                        }
                     }
                 }
             }
@@ -445,12 +461,12 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
-            var bounds = TransformBounds(obbBounds, rotation);
+            var bounds = TransformBounds(in obbBounds, in rotation);
             bounds.Clamp(_data -> WorldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
 
-            var hashMapUnic = new NativeParallelHashMap<int, byte>(64, Allocator.Temp);
+            var hashMapUnic = new NativeHashSet<int>(64, Allocator.Temp);
 
             var hashPosition = new int3(0F);
 
@@ -473,16 +489,18 @@ namespace HMH.ECS.SpatialHashing
 
                         var pos = GetPositionVoxel(hashPosition, true);
 
-                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> CellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> CellSize.x) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> CellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> CellSize.y) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> CellSize.z * 0.5F), _forward, inverseRotation, _data -> CellSize.z))
+                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> CellSize.x * 0.5F, 0F, 0F), Right, inverseRotation, _data -> CellSize.x) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> CellSize.y * 0.5F, 0F), Up, inverseRotation, _data -> CellSize.y) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> CellSize.z * 0.5F), Forward, inverseRotation, _data -> CellSize.z))
                         {
                             var hash = Hash(hashPosition);
 
                             if (_buckets.TryGetFirstValue(hash, out var item, out var it))
+                            {
                                 do
-                                    hashMapUnic.TryAdd(item, 0);
+                                    hashMapUnic.Add(item);
                                 while (_buckets.TryGetNextValue(out item, ref it));
+                            }
                         }
                     }
                 }
@@ -499,7 +517,7 @@ namespace HMH.ECS.SpatialHashing
             AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
-            var bounds = TransformBounds(obbBounds, rotation);
+            var bounds = TransformBounds(in obbBounds, in rotation);
             bounds.Clamp(_data -> WorldBounds);
 
             CalculStartEndIterationInternal(_data, bounds, out var start, out var end);
@@ -525,9 +543,9 @@ namespace HMH.ECS.SpatialHashing
 
                         var pos = GetPositionVoxel(hashPosition, true);
 
-                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> CellSize.x * 0.5F, 0F, 0F), _right, inverseRotation, _data -> CellSize.x) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> CellSize.y * 0.5F, 0F), _up, inverseRotation, _data -> CellSize.y) ||
-                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> CellSize.z * 0.5F), _forward, inverseRotation, _data -> CellSize.z))
+                        if (obbBounds.RayCastOBBFast(pos - new float3(_data -> CellSize.x * 0.5F, 0F, 0F), Right, inverseRotation, _data -> CellSize.x) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, _data -> CellSize.y * 0.5F, 0F), Up, inverseRotation, _data -> CellSize.y) ||
+                            obbBounds.RayCastOBBFast(pos - new float3(0F, 0F, _data -> CellSize.z * 0.5F), Forward, inverseRotation, _data -> CellSize.z))
                             voxelIndexes.Add(hashPosition);
                     }
                 }
@@ -535,29 +553,25 @@ namespace HMH.ECS.SpatialHashing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Bounds TransformBounds(Bounds boundTarget, quaternion rotation)
+        public static Bounds TransformBounds(in Bounds boundTarget, in quaternion rotation)
         {
-            float3 x    = math.mul(rotation, new float3(boundTarget.Size.x, 0, 0));
-            float3 y    = math.mul(rotation, new float3(0, boundTarget.Size.y, 0));
-            float3 z    = math.mul(rotation, new float3(0, 0, boundTarget.Size.z));
-            float3 size = math.abs(x) + math.abs(y) + math.abs(z);
-
-            var b = new Bounds(boundTarget.Center, size);
+            var b = new Bounds(boundTarget.Center, math.abs(math.mul(rotation, boundTarget.Size)));
             return b;
         }
 
-        private void ExtractValueFromHashMap(NativeParallelHashMap<int, byte> hashMapUnic, Bounds bounds, NativeList<T> resultList)
+        private void ExtractValueFromHashMap(NativeHashSet<int> hashMapUnic, Bounds bounds, NativeList<T> resultList)
         {
-            var datas = hashMapUnic.GetKeyArray(Allocator.Temp);
-
-            for (int i = 0; i < datas.Length; i++)
+            using var iterator = hashMapUnic.GetEnumerator();
+            while (iterator.MoveNext())
             {
-                _itemIDToBounds.TryGetValue(datas[i], out var b);
+                var itemID = iterator.Current;
+
+                _itemIDToBounds.TryGetValue(itemID, out var b);
 
                 if (bounds.Intersects(b) == false)
                     continue;
 
-                resultList.Add(_itemIDToItem[datas[i]]);
+                resultList.Add(_itemIDToItem[itemID]);
             }
         }
 
@@ -723,14 +737,16 @@ namespace HMH.ECS.SpatialHashing
 
         #region Variables
 
-        private static float3 _forward = new float3(0F, 0F, 1F);
-        private static float3 _up      = new float3(0F, 1F, 0F);
-        private static float3 _right   = new float3(1F, 0F, 0F);
+        private static readonly float3 Forward = new float3(0F, 0F, 1F);
+        private static readonly float3 Up     = new float3(0F, 1F, 0F);
+        private static readonly float3 Right  = new float3(1F, 0F, 0F);
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
+        // ReSharper disable InconsistentNaming
         private AtomicSafetyHandle m_Safety;
         [NativeSetClassTypeToNullOnSchedule]
         private DisposeSentinel m_DisposeSentinel;
+        // ReSharper restore InconsistentNaming
 #endif
 
         private Allocator _allocatorLabel;
