@@ -1,9 +1,9 @@
 {
   "name": "com.lennethproduction.spatialhashing",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "displayName": "Spatial Hashing",
   "description": "Spatial hashing for Unity using ECS",
-  "unity": "2022.20",
+  "unity": "2022.2",
   "dependencies": {
     "com.unity.entities": "1.0.8"
   },
