@@ -45,7 +45,7 @@ namespace HMH.ECS.SpatialHashing
             _updateGroup = entityQueryBuilder.WithAllRW<T>().WithAll<TY, TZ>().Build(this);
 
             entityQueryBuilder.Reset();
-            _removeGroup = entityQueryBuilder.WithNone<T>().WithAll<TY>().Build(this);
+            _removeGroup         = entityQueryBuilder.WithNone<T>().WithAll<TY>().Build(this);
 
             _countNewAdditionJob = new CountNewAdditionJob { Counter = new NativeReference<int>(0, Allocator.Persistent) };
         }
@@ -58,9 +58,9 @@ namespace HMH.ECS.SpatialHashing
             var entityQueryBuilder   = new EntityQueryBuilder(Allocator.Temp);
             var alreadyExistingGroup = entityQueryBuilder.WithAllRW<T, TY>().Build(this);
 
-            if (alreadyExistingGroup.IsEmpty == false)
+            if (alreadyExistingGroup.IsEmptyIgnoreFilter == false)
             {
-                var items = alreadyExistingGroup.ToComponentDataArray<T>(Allocator.Temp);
+                var items = alreadyExistingGroup.ToComponentDataArray<T>(World.UpdateAllocator.ToAllocator);
 
                 for (var i = 0; i < items.Length; i++)
                 {
